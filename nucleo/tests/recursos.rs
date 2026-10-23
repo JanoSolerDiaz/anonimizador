@@ -44,7 +44,9 @@ fn paths_are_built_under_the_root() {
     assert_eq!(resources.model_dir(), Path::new("raiz").join("modelo"));
     assert_eq!(
         resources.model_path(),
-        Path::new("raiz").join("modelo").join("model_quantized.onnx")
+        Path::new("raiz")
+            .join("modelo")
+            .join("model_quantized.onnx")
     );
     assert_eq!(
         resources.onnxruntime_path().parent().unwrap(),
@@ -54,7 +56,10 @@ fn paths_are_built_under_the_root() {
         resources.pdfium_dir(),
         Path::new("raiz").join("pdfium").join(platform_dir())
     );
-    assert_eq!(resources.pdfium_path().parent().unwrap(), resources.pdfium_dir());
+    assert_eq!(
+        resources.pdfium_path().parent().unwrap(),
+        resources.pdfium_dir()
+    );
 }
 
 #[test]
