@@ -65,9 +65,14 @@ impl Resources {
             return Ok(Self::new(dir));
         }
         let starts = [std::env::current_dir().ok(), std::env::current_exe().ok()];
+        Self::locate_from(starts.into_iter().flatten())
+    }
+
+    /// Busca una carpeta `recursos/` subiendo desde cada punto de partida,
+    /// en orden. Devuelve la primera que encuentre.
+    pub fn locate_from(starts: impl IntoIterator<Item = PathBuf>) -> Result<Self> {
         starts
             .into_iter()
-            .flatten()
             .flat_map(|start| {
                 start
                     .ancestors()
