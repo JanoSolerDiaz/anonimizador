@@ -19,13 +19,17 @@ export async function leerLock() {
   return JSON.parse(texto);
 }
 
-/** Plataforma actual con el mismo nombre que usa `nucleo::recursos::platform_dir`. */
-export function plataformaActual() {
-  const clave = `${process.platform}-${process.arch}`;
+/** Nombre de plataforma con el mismo formato que `nucleo::recursos::platform_dir`. */
+export function nombrePlataforma(plataforma, arquitectura) {
+  const clave = `${plataforma}-${arquitectura}`;
   const nombres = { "win32-x64": "win-x64", "darwin-arm64": "mac-arm64", "darwin-x64": "mac-x64" };
   const nombre = nombres[clave];
   if (!nombre) throw new Error(`Plataforma no soportada: ${clave}`);
   return nombre;
+}
+
+export function plataformaActual() {
+  return nombrePlataforma(process.platform, process.arch);
 }
 
 export async function sha256DeArchivo(ruta) {
@@ -100,4 +104,21 @@ export async function copiarArchivos(carpetaOrigen, archivos, destino) {
   return hashes;
 }
 
-export { writeFile, readFile, rm, join, existsSync };
+/**
+ * Indica si los archivos de `destino` corresponden al `paquete` del lock: el
+ * sello `.origen.json` debe ser del mismo paquete y cada archivo debe
+ * conservar el hash con el que se extrajo.
+ */
+export async function paqueteAlDia(destino, paquete) {
+  const sello = join(destino, ".origen.json");
+  if (!existsSync(sello)) return false;
+  const { sha256, archivos } = JSON.parse(await readFile(sello, "utf8"));
+  if (sha256 !== paquete.sha256) return false;
+  for (const nombre of Object.values(paquete.archivos)) {
+    const ruta = join(destino, nombre);
+    if (!existsSync(ruta) || (await sha256DeArchivo(ruta)) !== archivos[nombre]) return false;
+  }
+  return true;
+}
+
+export { writeFile, rm, join };

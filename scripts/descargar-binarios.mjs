@@ -11,32 +11,18 @@ import {
   RAIZ,
   copiarArchivos,
   descargar,
-  existsSync,
   extraer,
   join,
   leerLock,
+  paqueteAlDia,
   plataformaActual,
-  readFile,
   rm,
-  sha256DeArchivo,
   writeFile,
 } from "./lib/recursos.mjs";
 
 const { binarios } = await leerLock();
 const todas = process.argv.includes("--todas");
 const actual = plataformaActual();
-
-async function estaAlDia(destino, paquete) {
-  const sello = join(destino, ".origen.json");
-  if (!existsSync(sello)) return false;
-  const { sha256, archivos } = JSON.parse(await readFile(sello, "utf8"));
-  if (sha256 !== paquete.sha256) return false;
-  for (const nombre of Object.values(paquete.archivos)) {
-    const ruta = join(destino, nombre);
-    if (!existsSync(ruta) || (await sha256DeArchivo(ruta)) !== archivos[nombre]) return false;
-  }
-  return true;
-}
 
 let faltan = 0;
 for (const binario of binarios) {
@@ -50,7 +36,7 @@ for (const binario of binarios) {
       continue;
     }
     const destino = join(RAIZ, binario.destino, plataforma);
-    if (await estaAlDia(destino, paquete)) {
+    if (await paqueteAlDia(destino, paquete)) {
       console.log(`✓ ${etiqueta} (ya descargado)`);
       continue;
     }
