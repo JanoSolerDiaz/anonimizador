@@ -43,11 +43,25 @@ cd app && npm run tauri dev
 ## Pruebas
 
 ```bash
+# Rust: núcleo, CLI y configuración de seguridad de Tauri
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test -p nucleo -- --include-ignored   # las ignoradas necesitan recursos/
-cd app && npm run check && npm run build
+cargo test --workspace -- --include-ignored   # las ignoradas necesitan recursos/
+
+# Scripts de descarga y garantía "sin red" por plataforma
+node --test "scripts/test/*.test.mjs"
+
+# Interfaz
+cd app && npm run check && npm test && npm run build
 cd app && npm run tauri build -- --debug --no-bundle
+```
+
+Cobertura:
+
+```bash
+cargo llvm-cov --workspace -- --include-ignored          # requiere cargo-llvm-cov
+node --test --experimental-test-coverage "scripts/test/*.test.mjs"
+cd app && npm run test:coverage
 ```
 
 ## Reglas del proyecto
