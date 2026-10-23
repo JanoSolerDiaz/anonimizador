@@ -1,0 +1,23 @@
+[package]
+name = "nucleo"
+description = "Núcleo del anonimizador: motor, formatos y almacén. No depende de Tauri."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "cli"
+path = "src/bin/cli.rs"
+
+[dependencies]
+thiserror = "2.0.21"
+tracing = "0.1.44"
+
+# Sin `download-binaries`, `fetch-models` ni TLS: ort no puede descargar nada.
+# La biblioteca de ONNX Runtime se carga desde `recursos/` en tiempo de ejecución.
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "api-31"] }
+
+# Versión de API fijada a la de los binarios de PDFium descargados (chromium/7881).
+pdfium-render = { version = "=0.9.4", default-features = false, features = ["pdfium_7881", "image_latest", "thread_safe"] }

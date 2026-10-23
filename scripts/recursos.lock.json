@@ -1,0 +1,93 @@
+{
+  "_comentario": "Versiones fijas de los recursos que no van en git. Los SHA-256 se revisan a mano y no se recalculan nunca de forma automática. Cambiar una versión obliga a actualizar su hash.",
+  "modelo": {
+    "repositorio": "bardsai/eu-pii-anonimization-multilang",
+    "revision": "62ca5712368705bac11b8fea19e42e65cce088dd",
+    "destino": "recursos/modelo",
+    "archivos": [
+      {
+        "origen": "onnx/model_quantized.onnx",
+        "nombre": "model_quantized.onnx",
+        "sha256": "8c9f555c743ed14eb7e505ff9d9c7785775a1671fd14031af33f424de8bd0e7b"
+      },
+      {
+        "origen": "tokenizer.json",
+        "nombre": "tokenizer.json",
+        "sha256": "2464f9721707cb3d5edcf9a3d73454b13e8a7b3bb8fdba94b3de3d843f30e946"
+      },
+      {
+        "origen": "config.json",
+        "nombre": "config.json",
+        "sha256": "33424b38df39e6df478e73b5fee6790367a8fffb45befb911b8d83d49793b3dd"
+      },
+      {
+        "origen": "tokenizer_config.json",
+        "nombre": "tokenizer_config.json",
+        "sha256": "c019e3e4f7f901adf680dde303c7d964de86675a13e089bcc0f614d3fce75333"
+      },
+      {
+        "origen": "README.md",
+        "nombre": "README.md",
+        "sha256": "05155c37ecfec5f0c4327d8dd0d0b6b26c82fd12395bd3e0a504aadd45e96c1f"
+      }
+    ]
+  },
+  "binarios": [
+    {
+      "nombre": "onnxruntime",
+      "version": "1.31.0",
+      "destino": "recursos/onnxruntime",
+      "plataformas": {
+        "win-x64": {
+          "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-win-x64-1.31.0.zip",
+          "sha256": "3958d8a44984160692c1b4ffd0de3cb48f8c39f9d34bb31e433db06e30b82195",
+          "archivos": {
+            "onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll": "onnxruntime.dll",
+            "onnxruntime-win-x64-1.31.0/LICENSE": "LICENSE",
+            "onnxruntime-win-x64-1.31.0/ThirdPartyNotices.txt": "ThirdPartyNotices.txt"
+          }
+        },
+        "mac-arm64": {
+          "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-osx-arm64-1.31.0.tgz",
+          "sha256": "1031b36dd3bdaa8d976a6130d9cf2a05e9be320b93ae804f8427b91dc3432afc",
+          "archivos": {
+            "onnxruntime-osx-arm64-1.31.0/lib/libonnxruntime.1.31.0.dylib": "libonnxruntime.dylib",
+            "onnxruntime-osx-arm64-1.31.0/LICENSE": "LICENSE",
+            "onnxruntime-osx-arm64-1.31.0/ThirdPartyNotices.txt": "ThirdPartyNotices.txt"
+          }
+        }
+      }
+    },
+    {
+      "nombre": "pdfium",
+      "version": "chromium/7881",
+      "destino": "recursos/pdfium",
+      "plataformas": {
+        "win-x64": {
+          "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-win-x64.tgz",
+          "sha256": "73cc0de638ac2095e7445bf56a38200a5b7c7ca0e9f4ba144598f2457377ac08",
+          "archivos": {
+            "bin/pdfium.dll": "pdfium.dll",
+            "LICENSE": "LICENSE"
+          }
+        },
+        "mac-arm64": {
+          "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-mac-arm64.tgz",
+          "sha256": "52e94ca5aa8847934330daf3f8150c190682c5ca93831468794f8b90d4392e40",
+          "archivos": {
+            "lib/libpdfium.dylib": "libpdfium.dylib",
+            "LICENSE": "LICENSE"
+          }
+        },
+        "mac-x64": {
+          "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-mac-x64.tgz",
+          "sha256": "6dedf83990e0e3d6b7c93c9e7589c5a126b0ae14b7464d76120cff7a26afb18b",
+          "archivos": {
+            "lib/libpdfium.dylib": "libpdfium.dylib",
+            "LICENSE": "LICENSE"
+          }
+        }
+      }
+    }
+  ]
+}

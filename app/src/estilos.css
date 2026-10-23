@@ -1,0 +1,40 @@
+/* Variables y estilos base. Sin librerías de componentes. */
+
+:root {
+  --color-fondo: #ffffff;
+  --color-texto: #1d1d1f;
+  --color-texto-suave: #5f6368;
+  --color-borde: #dadce0;
+  --color-acento: #1a73e8;
+
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 16px;
+
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fondo: #1e1e1e;
+    --color-texto: #f1f1f1;
+    --color-texto-suave: #a8a8a8;
+    --color-borde: #3c3c3c;
+    --color-acento: #8ab4f8;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}

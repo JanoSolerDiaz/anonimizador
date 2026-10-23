@@ -1,0 +1,9 @@
+# Compilación
+/target/
+
+# Modelo y binarios nativos: se descargan con scripts/descargar-*.mjs
+/recursos/
+
+# Sistema
+.DS_Store
+Thumbs.db

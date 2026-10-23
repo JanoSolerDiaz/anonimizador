@@ -1,0 +1,23 @@
+[package]
+name = "anonimizador"
+description = "Anonimizador local de documentos"
+authors = ["Cuatroochenta"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+# El sufijo `_lib` evita que el nombre de la biblioteca choque con el del
+# binario en Windows: https://github.com/rust-lang/cargo/issues/8519
+name = "anonimizador_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+nucleo = { path = "../../nucleo" }
+tauri = { version = "2.12.5", features = [] }
+tauri-plugin-single-instance = "2.5.4"
