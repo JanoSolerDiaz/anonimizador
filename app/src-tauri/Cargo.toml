@@ -21,3 +21,6 @@ tauri-build = { version = "2.7.4", features = [] }
 nucleo = { path = "../../nucleo" }
 tauri = { version = "2.12.5", features = [] }
 tauri-plugin-single-instance = "2.5.4"
+
+[dev-dependencies]
+serde_json = "1.0.154"

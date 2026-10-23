@@ -46,6 +46,7 @@ name = "anonimizador"
 version = "0.1.0"
 dependencies = [
  "nucleo",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",
