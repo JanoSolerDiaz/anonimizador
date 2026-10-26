@@ -20,9 +20,9 @@ pub struct TypeEntry {
     /// Nombre del marcador, por ejemplo `NOMBRE_PERSONA` en `[NOMBRE_PERSONA_0042]`.
     #[serde(rename = "marcador")]
     pub marker: String,
-    /// Etiqueta del modelo sin el prefijo BIO, o `None` si solo la asignan las reglas.
+    /// Etiqueta del modelo sin el prefijo BIO, por ejemplo `PERSON_NAME`.
     #[serde(rename = "etiqueta_modelo")]
-    pub model_label: Option<String>,
+    pub model_label: String,
     /// Si el usuario puede elegir no sustituir este tipo.
     #[serde(rename = "opcional")]
     pub optional: bool,
@@ -77,10 +77,11 @@ impl TypeTable {
                     entry.marker
                 )));
             }
-            if let Some(label) = &entry.model_label
-                && !labels.insert(label.as_str())
-            {
-                return Err(invalid(format!("la etiqueta «{label}» está repetida")));
+            if !labels.insert(entry.model_label.as_str()) {
+                return Err(invalid(format!(
+                    "la etiqueta «{}» está repetida",
+                    entry.model_label
+                )));
             }
         }
         Ok(Self {
@@ -93,7 +94,7 @@ impl TypeTable {
     }
 
     pub fn model_labels(&self) -> impl Iterator<Item = &str> {
-        self.entries.iter().filter_map(|e| e.model_label.as_deref())
+        self.entries.iter().map(|e| e.model_label.as_str())
     }
 
     pub fn optional_markers(&self) -> impl Iterator<Item = &str> {
@@ -116,7 +117,7 @@ impl TypeTable {
     pub fn marker_for_label(&self, label: &str) -> Option<&str> {
         self.entries
             .iter()
-            .find(|e| e.model_label.as_deref() == Some(label))
+            .find(|e| e.model_label == label)
             .map(|e| e.marker.as_str())
     }
 

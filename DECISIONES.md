@@ -45,7 +45,18 @@ TypeScript 7 ya está publicado, pero `svelte-check` 4.7.7 solo admite TypeScrip
 
 ### Nombres de los marcadores
 
-El PRD daba ejemplos genéricos (`PERSONA`, `DIRECCION`, `SALUD`). Jano aprobó una tabla con un marcador por cada clase del modelo, por ejemplo `NOMBRE_PERSONA`, `DIRECCION_POSTAL` y `DATOS_SALUD`, más `DNI`, `NIE` e `IBAN`, que solo detectan las reglas. La tabla está en `nucleo/config/tipos.json` y `nucleo/tests/tipos.rs` la fija.
+El PRD daba ejemplos genéricos (`PERSONA`, `DIRECCION`, `SALUD`). Jano aprobó una tabla con un marcador por cada clase del modelo, por ejemplo `NOMBRE_PERSONA`, `DIRECCION_POSTAL` y `DATOS_SALUD`. La tabla está en `nucleo/config/tipos.json` y `nucleo/tests/tipos.rs` la fija.
+
+### Sin reglas deterministas
+
+El PRD pide reglas fijas para DNI, NIE, IBAN, tarjeta, email y teléfono, que se ejecuten siempre junto al modelo, comprueben el dígito de control y ganen al modelo cuando coincidan con él. Jano decidió no hacerlas: todos los datos los detecta el modelo. Esto deja sin efecto, respecto al PRD:
+
+- la sección «Reglas deterministas» y la fila «Reglas» (crate `regex`) de la tabla de tecnologías;
+- el campo `origen` de las entidades, que siempre valdría «modelo»;
+- la regla de fusión «si una regla y el modelo se solapan, gana la regla» (se mantiene que entre dos entidades del modelo gana la de mayor puntuación);
+- el criterio de aceptación «Reglas: DNI, NIE, IBAN y tarjeta válidos se detectan; los de control incorrecto no».
+
+Riesgo aceptado: un DNI, IBAN o tarjeta que el modelo no detecte, o que detecte solo en parte, queda en el documento anonimizado. El informe de detección del Hito 2 mide la exhaustividad de esos tipos por separado.
 
 ### Tipos opcionales
 

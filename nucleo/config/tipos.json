@@ -1,7 +1,7 @@
 {
   "formato": "anonimizador-tipos",
   "version_formato": 1,
-  "_comentario": "Correspondencia entre las etiquetas del modelo (config.json, id2label) y los marcadores en español. Nombres aprobados por Jano el 2026-10-26. Los tipos sin etiqueta_modelo solo los asignan las reglas deterministas. Los tipos opcionales son los que el usuario puede elegir no sustituir; por defecto se sustituyen todos.",
+  "_comentario": "Correspondencia entre las etiquetas del modelo (config.json, id2label) y los marcadores en español. Nombres aprobados por Jano el 2026-10-26. Los tipos opcionales son los que el usuario puede elegir no sustituir; por defecto se sustituyen todos.",
   "tipos": [
     { "marcador": "NOMBRE_PERSONA", "etiqueta_modelo": "PERSON_NAME", "opcional": false },
     { "marcador": "ALIAS_PERSONA", "etiqueta_modelo": "PERSON_ALIAS", "opcional": false },
@@ -37,9 +37,6 @@
     { "marcador": "IDEOLOGIA", "etiqueta_modelo": "POLITICAL_OPINION", "opcional": false },
     { "marcador": "RELIGION", "etiqueta_modelo": "RELIGION_OR_BELIEF", "opcional": false },
     { "marcador": "ORIENTACION_SEXUAL", "etiqueta_modelo": "SEXUAL_ORIENTATION", "opcional": false },
-    { "marcador": "SINDICATO", "etiqueta_modelo": "TRADE_UNION_MEMBERSHIP", "opcional": false },
-    { "marcador": "DNI", "etiqueta_modelo": null, "opcional": false },
-    { "marcador": "NIE", "etiqueta_modelo": null, "opcional": false },
-    { "marcador": "IBAN", "etiqueta_modelo": null, "opcional": false }
+    { "marcador": "SINDICATO", "etiqueta_modelo": "TRADE_UNION_MEMBERSHIP", "opcional": false }
   ]
 }
