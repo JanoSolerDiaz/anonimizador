@@ -44,6 +44,7 @@ mod tests {
             Error::PdfiumLoad("detalle".into()),
             Error::InvalidTypeTable("detalle".into()),
             Error::InvalidModelConfig("detalle".into()),
+            Error::Tokenizer("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
