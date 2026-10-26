@@ -28,6 +28,9 @@ pub enum Error {
     #[error("No se ha podido preparar el texto para el modelo: {0}")]
     Tokenizer(String),
 
+    #[error("No se ha podido analizar el texto con el modelo: {0}")]
+    Inference(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -48,6 +51,7 @@ mod tests {
             Error::InvalidTypeTable("detalle".into()),
             Error::InvalidModelConfig("detalle".into()),
             Error::Tokenizer("detalle".into()),
+            Error::Inference("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {

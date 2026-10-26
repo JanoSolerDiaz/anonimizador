@@ -24,7 +24,12 @@ pub struct TextTokenizer {
     inner: Tokenizer,
     prefix: Vec<u32>,
     suffix: Vec<u32>,
+    pad_id: u32,
 }
+
+/// Nombres habituales del token de relleno: `<pad>` en XLM-R y en v2,
+/// `[PAD]` en los modelos tipo BERT.
+const PAD_TOKENS: [&str; 2] = ["<pad>", "[PAD]"];
 
 impl TextTokenizer {
     /// Carga `tokenizer.json` y desactiva el truncado y el relleno que pueda
@@ -54,10 +59,17 @@ impl TextTokenizer {
                 (false, _) => seen_text = true,
             }
         }
+        // El valor del relleno no influye en el resultado, porque la máscara
+        // de atención lo oculta; aun así se usa el del modelo si lo tiene.
+        let pad_id = PAD_TOKENS
+            .iter()
+            .find_map(|name| inner.token_to_id(name))
+            .unwrap_or(0);
         Ok(Self {
             inner,
             prefix,
             suffix,
+            pad_id,
         })
     }
 
@@ -69,6 +81,11 @@ impl TextTokenizer {
     /// Tokens que van al final de cada ventana.
     pub fn suffix(&self) -> &[u32] {
         &self.suffix
+    }
+
+    /// Token con el que se rellenan las secuencias cortas de un lote.
+    pub fn pad_id(&self) -> u32 {
+        self.pad_id
     }
 
     pub fn encode(&self, text: &str) -> Result<Vec<Token>> {

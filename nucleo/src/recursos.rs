@@ -3,6 +3,7 @@
 //! `recursos/`; en la app instalada los proporciona Tauri.
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use crate::{Error, Result};
 
@@ -199,8 +200,8 @@ impl Resources {
     /// en memoria. Sirve para detectar pronto problemas de versión o de
     /// enlace.
     ///
-    /// Solo se puede llamar una vez por proceso: las dos bibliotecas se
-    /// inicializan de forma global.
+    /// Solo se puede llamar una vez por proceso, porque PDFium se enlaza de
+    /// forma global. El entorno de ONNX Runtime sí se comparte.
     pub fn smoke_test_models(&self, models: &[ModelPaths]) -> Result<SmokeReport> {
         for model in models {
             model.check_files()?;
@@ -216,14 +217,23 @@ impl Resources {
         Ok(SmokeReport { models, pdf_pages })
     }
 
-    fn onnx_environment(&self) -> Result<ort::environment::Environment> {
+    /// Entorno de ONNX Runtime del proceso. `ort` solo permite crear uno por
+    /// proceso, así que se crea la primera vez y después se reutiliza.
+    pub fn onnx_environment(&self) -> Result<ort::environment::Environment> {
+        static ENVIRONMENT: Mutex<Option<ort::environment::Environment>> = Mutex::new(None);
+        let mut shared = ENVIRONMENT.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(env) = shared.as_ref() {
+            return Ok(env.clone());
+        }
         // ONNX Runtime envía telemetría por defecto en Windows: se desactiva.
-        ort::init_from(self.onnxruntime_path())
+        let env = ort::init_from(self.onnxruntime_path())
             .map_err(|e| Error::ModelLoad(e.to_string()))?
             .with_name("anonimizador")
             .with_telemetry(false)
             .build()
-            .map_err(|e| Error::ModelLoad(e.to_string()))
+            .map_err(|e| Error::ModelLoad(e.to_string()))?;
+        *shared = Some(env.clone());
+        Ok(env)
     }
 
     fn load_pdfium(&self) -> Result<usize> {
