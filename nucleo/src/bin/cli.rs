@@ -2,15 +2,15 @@
 //!
 //! Uso:
 //!   cli version
-//!   cli comprobar-recursos [carpeta]
+//!   cli comprobar-recursos [carpeta] [--modelo <nombre>]...
 
 use std::process::ExitCode;
 
-use nucleo::recursos::Resources;
+use nucleo::recursos::{DEFAULT_MODEL, Resources};
 
 const USAGE: &str = "Uso:
   cli version
-  cli comprobar-recursos [carpeta]";
+  cli comprobar-recursos [carpeta] [--modelo <nombre>]...";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -19,28 +19,62 @@ fn main() -> ExitCode {
             println!("anonimizador {}", nucleo::VERSION);
             ExitCode::SUCCESS
         }
-        Some("comprobar-recursos") => check_resources(args.get(1).map(String::as_str)),
-        _ => {
-            eprintln!("{USAGE}");
-            ExitCode::from(2)
-        }
+        Some("comprobar-recursos") => match CheckArgs::parse(&args[1..]) {
+            Some(check) => check_resources(check),
+            None => usage(),
+        },
+        _ => usage(),
     }
 }
 
-fn check_resources(dir: Option<&str>) -> ExitCode {
-    let resources = match dir {
+fn usage() -> ExitCode {
+    eprintln!("{USAGE}");
+    ExitCode::from(2)
+}
+
+/// Argumentos de `comprobar-recursos`.
+struct CheckArgs<'a> {
+    dir: Option<&'a str>,
+    models: Vec<&'a str>,
+}
+
+impl<'a> CheckArgs<'a> {
+    fn parse(args: &'a [String]) -> Option<Self> {
+        let mut dir = None;
+        let mut models = Vec::new();
+        let mut args = args.iter().map(String::as_str);
+        while let Some(arg) = args.next() {
+            match arg {
+                "--modelo" => models.push(args.next()?),
+                _ if arg.starts_with("--") => return None,
+                _ if dir.is_none() => dir = Some(arg),
+                _ => return None,
+            }
+        }
+        if models.is_empty() {
+            models.push(DEFAULT_MODEL);
+        }
+        Some(Self { dir, models })
+    }
+}
+
+fn check_resources(check: CheckArgs) -> ExitCode {
+    let resources = match check.dir {
         Some(dir) => Ok(Resources::new(dir)),
         None => Resources::locate(),
     };
     let result = resources.and_then(|r| {
         println!("Recursos: {}", r.root().display());
-        r.smoke_test()
+        let models: Vec<_> = check.models.iter().map(|name| r.model(name)).collect();
+        r.smoke_test_models(&models)
     });
     match result {
         Ok(report) => {
-            println!("Modelo cargado.");
-            println!("  Entradas: {}", report.model_inputs.join(", "));
-            println!("  Salidas:  {}", report.model_outputs.join(", "));
+            for model in &report.models {
+                println!("Modelo «{}» cargado.", model.name);
+                println!("  Entradas: {}", model.inputs.join(", "));
+                println!("  Salidas:  {}", model.outputs.join(", "));
+            }
             println!(
                 "PDFium cargado. PDF de prueba con {} página(s).",
                 report.pdf_pages

@@ -19,6 +19,23 @@ export async function leerLock() {
   return JSON.parse(texto);
 }
 
+/**
+ * Modelos del lock que hay que descargar según los argumentos: todos, o solo
+ * el indicado con `--modelo <nombre>`.
+ */
+export function modelosSeleccionados(lock, argumentos) {
+  const posicion = argumentos.indexOf("--modelo");
+  if (posicion === -1) return lock.modelos;
+  const nombre = argumentos[posicion + 1];
+  if (!nombre) throw new Error("Falta el nombre del modelo después de --modelo");
+  const modelo = lock.modelos.find((m) => m.nombre === nombre);
+  if (!modelo) {
+    const disponibles = lock.modelos.map((m) => m.nombre).join(", ");
+    throw new Error(`No hay ningún modelo "${nombre}" en el lock. Disponibles: ${disponibles}`);
+  }
+  return [modelo];
+}
+
 /** Nombre de plataforma con el mismo formato que `nucleo::recursos::platform_dir`. */
 export function nombrePlataforma(plataforma, arquitectura) {
   const clave = `${plataforma}-${arquitectura}`;

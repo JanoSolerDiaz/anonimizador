@@ -61,11 +61,66 @@ fn check_resources_with_missing_folder_fails_with_a_clear_message() {
 }
 
 #[test]
+fn check_resources_looks_in_the_folder_of_the_requested_model() {
+    let dir = tempfile::tempdir().unwrap();
+
+    let output = cli(&[
+        "comprobar-recursos",
+        dir.path().to_str().unwrap(),
+        "--modelo",
+        "modelo-v2",
+    ]);
+
+    assert_eq!(output.status.code(), Some(1));
+    let message = stderr(&output);
+    let expected = dir.path().join("modelo-v2").join("model_quantized.onnx");
+    assert!(
+        message.contains(&expected.display().to_string()),
+        "{message}"
+    );
+}
+
+#[test]
+fn check_resources_rejects_modelo_without_a_name() {
+    let output = cli(&["comprobar-recursos", "--modelo"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).contains("Uso:"));
+}
+
+#[test]
+fn check_resources_rejects_unknown_options_and_extra_folders() {
+    assert_eq!(
+        cli(&["comprobar-recursos", "--rapido"]).status.code(),
+        Some(2)
+    );
+    assert_eq!(
+        cli(&["comprobar-recursos", "una", "otra"]).status.code(),
+        Some(2)
+    );
+}
+
+#[test]
 #[ignore = "necesita los recursos descargados en recursos/"]
 fn check_resources_with_real_resources_succeeds() {
     let output = cli(&["comprobar-recursos"]);
     assert!(output.status.success(), "{}", stderr(&output));
     let text = stdout(&output);
-    assert!(text.contains("Modelo cargado."));
+    assert!(text.contains("Modelo «modelo» cargado."), "{text}");
     assert!(text.contains("PDFium cargado."));
+}
+
+#[test]
+#[ignore = "necesita los dos modelos descargados en recursos/"]
+fn check_resources_loads_several_models() {
+    let output = cli(&[
+        "comprobar-recursos",
+        "--modelo",
+        "modelo",
+        "--modelo",
+        "modelo-v2",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(text.contains("Modelo «modelo» cargado."), "{text}");
+    assert!(text.contains("Modelo «modelo-v2» cargado."), "{text}");
 }

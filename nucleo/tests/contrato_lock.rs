@@ -44,7 +44,12 @@ fn the_lock_lists_v1_and_v2_in_their_own_folders() {
     let lock = lock();
     let found: Vec<(&str, &str)> = models(&lock)
         .iter()
-        .map(|m| (m["nombre"].as_str().unwrap(), m["destino"].as_str().unwrap()))
+        .map(|m| {
+            (
+                m["nombre"].as_str().unwrap(),
+                m["destino"].as_str().unwrap(),
+            )
+        })
         .collect();
     assert_eq!(
         found,
@@ -61,7 +66,10 @@ fn every_model_folder_is_one_the_app_can_open() {
         let folder = destino.strip_prefix("recursos/").unwrap();
         assert_eq!(resources.model(folder).dir(), Path::new(destino));
     }
-    assert_eq!(models(&lock)[0]["destino"], format!("recursos/{DEFAULT_MODEL}"));
+    assert_eq!(
+        models(&lock)[0]["destino"],
+        format!("recursos/{DEFAULT_MODEL}")
+    );
 }
 
 #[test]
