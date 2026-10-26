@@ -47,50 +47,16 @@ const APPROVED: [(&str, &str); 35] = [
     ("TRADE_UNION_MEMBERSHIP", "SINDICATO"),
 ];
 
-/// Tipos que asignan las reglas deterministas.
-const RULE_MARKERS: [&str; 6] = [
-    "DNI",
-    "NIE",
-    "IBAN",
-    "TARJETA_BANCARIA",
-    "EMAIL",
-    "TELEFONO",
-];
-
 #[test]
-fn every_approved_label_maps_to_its_approved_marker() {
+fn every_type_comes_from_the_model() {
+    // No hay reglas deterministas (decisión de Jano del 2026-10-26), así que
+    // cada marcador corresponde a una etiqueta del modelo y nada más.
     let table = TypeTable::builtin();
-    for (label, marker) in APPROVED {
-        assert_eq!(table.marker_for_label(label), Some(marker), "{label}");
-    }
-}
-
-#[test]
-fn the_table_has_no_model_label_beyond_the_approved_ones() {
-    let table = TypeTable::builtin();
-    let labels: BTreeSet<&str> = table.model_labels().collect();
-    let approved: BTreeSet<&str> = APPROVED.iter().map(|(label, _)| *label).collect();
-    assert_eq!(labels, approved);
-}
-
-#[test]
-fn every_rule_marker_exists_in_the_table() {
-    let table = TypeTable::builtin();
-    for marker in RULE_MARKERS {
-        assert!(table.contains_marker(marker), "falta {marker}");
-    }
-}
-
-#[test]
-fn dni_nie_and_iban_are_rule_only_types() {
-    let table = TypeTable::builtin();
-    let model_markers: BTreeSet<&str> = APPROVED.iter().map(|(_, marker)| *marker).collect();
+    let markers: BTreeSet<&str> = table.markers().collect();
+    let approved: BTreeSet<&str> = APPROVED.iter().map(|(_, marker)| *marker).collect();
+    assert_eq!(markers, approved);
     for marker in ["DNI", "NIE", "IBAN"] {
-        assert!(
-            !model_markers.contains(marker),
-            "{marker} no debe venir del modelo"
-        );
-        assert!(table.contains_marker(marker));
+        assert!(!table.contains_marker(marker), "{marker} sobra");
     }
 }
 

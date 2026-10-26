@@ -213,14 +213,27 @@ mod tests {
     fn a_valid_table_is_accepted() {
         let table = table(
             r#"{"marcador": "NOMBRE_PERSONA", "etiqueta_modelo": "PERSON_NAME", "opcional": false},
-               {"marcador": "DNI", "etiqueta_modelo": null, "opcional": false}"#,
+               {"marcador": "LUGAR", "etiqueta_modelo": "LOCATION", "opcional": true}"#,
         )
         .unwrap();
         assert_eq!(
             table.marker_for_label("PERSON_NAME"),
             Some("NOMBRE_PERSONA")
         );
-        assert_eq!(table.marker_for_label("DNI"), None);
+        assert_eq!(table.marker_for_label("NOMBRE_PERSONA"), None);
+    }
+
+    #[test]
+    fn entries_without_model_label_are_rejected() {
+        for entry in [
+            r#"{"marcador": "DNI", "etiqueta_modelo": null, "opcional": false}"#,
+            r#"{"marcador": "DNI", "opcional": false}"#,
+        ] {
+            assert!(
+                matches!(table(entry), Err(Error::InvalidTypeTable(_))),
+                "{entry}"
+            );
+        }
     }
 
     #[test]
@@ -252,7 +265,7 @@ mod tests {
             "",
         ] {
             let entry = format!(
-                r#"{{"marcador": "{marker}", "etiqueta_modelo": null, "opcional": false}}"#
+                r#"{{"marcador": "{marker}", "etiqueta_modelo": "LOCATION", "opcional": false}}"#
             );
             assert!(
                 matches!(table(&entry), Err(Error::InvalidTypeTable(_))),
