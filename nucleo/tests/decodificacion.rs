@@ -22,7 +22,13 @@ const B_LOC: usize = 3;
 const I_LOC: usize = 4;
 
 fn labels() -> Labels {
-    let names = ["O", "B-PERSON_NAME", "I-PERSON_NAME", "B-LOCATION", "I-LOCATION"];
+    let names = [
+        "O",
+        "B-PERSON_NAME",
+        "I-PERSON_NAME",
+        "B-LOCATION",
+        "I-LOCATION",
+    ];
     Labels::parse(&names.map(String::from)).unwrap()
 }
 
@@ -36,12 +42,19 @@ fn row(label: usize, p: f32) -> Vec<f32> {
 fn word_tokens(text: &str) -> Vec<Token> {
     split_words(text)
         .iter()
-        .map(|w| Token { id: 0, start: w.start, end: w.end })
+        .map(|w| Token {
+            id: 0,
+            start: w.start,
+            end: w.end,
+        })
         .collect()
 }
 
 fn options(strategy: WordStrategy) -> DecodeOptions {
-    DecodeOptions { strategy, ..DecodeOptions::default() }
+    DecodeOptions {
+        strategy,
+        ..DecodeOptions::default()
+    }
 }
 
 fn run(text: &str, tokens: &[Token], rows: &[Vec<f32>], strategy: WordStrategy) -> Vec<Detection> {
@@ -59,7 +72,10 @@ fn found(text: &str, detections: &[Detection]) -> Vec<(String, String)> {
 }
 
 fn pairs(expected: &[(&str, &str)]) -> Vec<(String, String)> {
-    expected.iter().map(|(t, l)| (t.to_string(), l.to_string())).collect()
+    expected
+        .iter()
+        .map(|(t, l)| (t.to_string(), l.to_string()))
+        .collect()
 }
 
 const BOTH: [WordStrategy; 2] = [WordStrategy::FirstSubtoken, WordStrategy::WordMean];
@@ -89,7 +105,10 @@ fn softmax_is_stable_with_large_logits() {
 #[test]
 fn labels_without_bio_prefix_are_rejected() {
     let names = ["O", "PERSON_NAME"].map(String::from);
-    assert!(matches!(Labels::parse(&names), Err(Error::InvalidModelConfig(_))));
+    assert!(matches!(
+        Labels::parse(&names),
+        Err(Error::InvalidModelConfig(_))
+    ));
 }
 
 // ---------------------------------------------------------------- BIO
@@ -97,7 +116,13 @@ fn labels_without_bio_prefix_are_rejected() {
 #[test]
 fn begin_and_inside_build_entities() {
     let text = "Juan Pérez vive en Madrid";
-    let rows = [row(B_PER, 0.9), row(I_PER, 0.8), row(O, 0.9), row(O, 0.9), row(B_LOC, 0.7)];
+    let rows = [
+        row(B_PER, 0.9),
+        row(I_PER, 0.8),
+        row(O, 0.9),
+        row(O, 0.9),
+        row(B_LOC, 0.7),
+    ];
     for strategy in BOTH {
         let d = run(text, &word_tokens(text), &rows, strategy);
         assert_eq!(
@@ -116,7 +141,11 @@ fn inside_without_begin_opens_an_entity() {
     let rows = [row(O, 0.9), row(I_PER, 0.9)];
     for strategy in BOTH {
         let d = run(text, &word_tokens(text), &rows, strategy);
-        assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME")]), "{strategy:?}");
+        assert_eq!(
+            found(text, &d),
+            pairs(&[("Ana", "PERSON_NAME")]),
+            "{strategy:?}"
+        );
     }
 }
 
@@ -151,10 +180,20 @@ fn two_begins_in_a_row_are_two_entities() {
 #[test]
 fn an_entity_keeps_the_text_between_its_words() {
     let text = "en Calle Mayor, 5 vive";
-    let rows = [row(O, 0.9), row(B_LOC, 0.9), row(I_LOC, 0.9), row(I_LOC, 0.9), row(O, 0.9)];
+    let rows = [
+        row(O, 0.9),
+        row(B_LOC, 0.9),
+        row(I_LOC, 0.9),
+        row(I_LOC, 0.9),
+        row(O, 0.9),
+    ];
     for strategy in BOTH {
         let d = run(text, &word_tokens(text), &rows, strategy);
-        assert_eq!(found(text, &d), pairs(&[("Calle Mayor, 5", "LOCATION")]), "{strategy:?}");
+        assert_eq!(
+            found(text, &d),
+            pairs(&[("Calle Mayor, 5", "LOCATION")]),
+            "{strategy:?}"
+        );
     }
 }
 
@@ -163,14 +202,30 @@ fn tokens_outside_words_are_ignored() {
     // «Ana  Gil»: el token del doble espacio dice B-LOCATION, pero no es de ninguna palabra.
     let text = "Ana  Gil";
     let tokens = [
-        Token { id: 0, start: 0, end: 3 },
-        Token { id: 0, start: 3, end: 5 },
-        Token { id: 0, start: 5, end: 8 },
+        Token {
+            id: 0,
+            start: 0,
+            end: 3,
+        },
+        Token {
+            id: 0,
+            start: 3,
+            end: 5,
+        },
+        Token {
+            id: 0,
+            start: 5,
+            end: 8,
+        },
     ];
     let rows = [row(B_PER, 0.9), row(B_LOC, 0.9), row(I_PER, 0.9)];
     for strategy in BOTH {
         let d = run(text, &tokens, &rows, strategy);
-        assert_eq!(found(text, &d), pairs(&[("Ana  Gil", "PERSON_NAME")]), "{strategy:?}");
+        assert_eq!(
+            found(text, &d),
+            pairs(&[("Ana  Gil", "PERSON_NAME")]),
+            "{strategy:?}"
+        );
     }
 }
 
@@ -223,7 +278,11 @@ fn symbols_that_belong_to_the_data_are_kept() {
         let d = run(text, &word_tokens(text), &rows, strategy);
         assert_eq!(
             found(text, &d),
-            pairs(&[("+34 612", "PERSON_NAME"), ("@ana_gil", "LOCATION"), ("100€", "PERSON_NAME")]),
+            pairs(&[
+                ("+34 612", "PERSON_NAME"),
+                ("@ana_gil", "LOCATION"),
+                ("100€", "PERSON_NAME")
+            ]),
             "{strategy:?}"
         );
     }
@@ -234,7 +293,10 @@ fn an_entity_of_only_punctuation_is_dropped() {
     let text = "Ana ... Gil";
     let rows = [row(O, 0.9), row(B_PER, 0.9), row(O, 0.9)];
     for strategy in BOTH {
-        assert!(run(text, &word_tokens(text), &rows, strategy).is_empty(), "{strategy:?}");
+        assert!(
+            run(text, &word_tokens(text), &rows, strategy).is_empty(),
+            "{strategy:?}"
+        );
     }
 }
 
@@ -254,9 +316,18 @@ fn entities_below_the_threshold_are_dropped() {
 fn the_threshold_is_configurable() {
     let text = "Ana";
     let probs = row(B_PER, 0.4);
-    let low = DecodeOptions { threshold: 0.3, ..options(WordStrategy::FirstSubtoken) };
-    let high = DecodeOptions { threshold: 0.5, ..low };
-    assert_eq!(decode(text, &word_tokens(text), &probs, &labels(), &low).len(), 1);
+    let low = DecodeOptions {
+        threshold: 0.3,
+        ..options(WordStrategy::FirstSubtoken)
+    };
+    let high = DecodeOptions {
+        threshold: 0.5,
+        ..low
+    };
+    assert_eq!(
+        decode(text, &word_tokens(text), &probs, &labels(), &low).len(),
+        1
+    );
     assert!(decode(text, &word_tokens(text), &probs, &labels(), &high).is_empty());
 }
 
@@ -271,16 +342,40 @@ fn default_options() {
 
 fn two_subtokens() -> (&'static str, Vec<Token>) {
     // «Pérez» partido en «Pé» y «rez».
-    ("Pérez", vec![Token { id: 0, start: 0, end: 2 }, Token { id: 0, start: 2, end: 5 }])
+    (
+        "Pérez",
+        vec![
+            Token {
+                id: 0,
+                start: 0,
+                end: 2,
+            },
+            Token {
+                id: 0,
+                start: 2,
+                end: 5,
+            },
+        ],
+    )
 }
 
 #[test]
 fn first_subtoken_decides_the_whole_word() {
     let (text, tokens) = two_subtokens();
-    let d = run(text, &tokens, &[row(B_PER, 0.9), row(O, 0.9)], WordStrategy::FirstSubtoken);
+    let d = run(
+        text,
+        &tokens,
+        &[row(B_PER, 0.9), row(O, 0.9)],
+        WordStrategy::FirstSubtoken,
+    );
     assert_eq!(found(text, &d), pairs(&[("Pérez", "PERSON_NAME")]));
 
-    let d = run(text, &tokens, &[row(O, 0.9), row(B_PER, 0.9)], WordStrategy::FirstSubtoken);
+    let d = run(
+        text,
+        &tokens,
+        &[row(O, 0.9), row(B_PER, 0.9)],
+        WordStrategy::FirstSubtoken,
+    );
     assert!(d.is_empty());
 }
 
@@ -289,10 +384,7 @@ fn word_mean_pools_begin_and_inside_across_subtokens() {
     let (text, tokens) = two_subtokens();
     // Primer subtoken: O gana (0,4). Media de la palabra: O 0,4; PERSONA
     // (0,3 + 0,3 + 0,1 + 0,5) / 2 = 0,6.
-    let rows = [
-        vec![0.4, 0.3, 0.3, 0.0, 0.0],
-        vec![0.4, 0.1, 0.5, 0.0, 0.0],
-    ];
+    let rows = [vec![0.4, 0.3, 0.3, 0.0, 0.0], vec![0.4, 0.1, 0.5, 0.0, 0.0]];
     assert!(run(text, &tokens, &rows, WordStrategy::FirstSubtoken).is_empty());
     let d = run(text, &tokens, &rows, WordStrategy::WordMean);
     assert_eq!(found(text, &d), pairs(&[("Pérez", "PERSON_NAME")]));
@@ -306,7 +398,10 @@ fn word_mean_uses_begin_versus_inside_to_split_neighbours() {
     // pesa más B- (empieza otra persona) o I- (sigue la anterior).
     let begins = [vec![0.1, 0.8, 0.1, 0.0, 0.0], vec![0.1, 0.6, 0.3, 0.0, 0.0]];
     let d = run(text, &word_tokens(text), &begins, WordStrategy::WordMean);
-    assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME"), ("Luis", "PERSON_NAME")]));
+    assert_eq!(
+        found(text, &d),
+        pairs(&[("Ana", "PERSON_NAME"), ("Luis", "PERSON_NAME")])
+    );
 
     let continues = [vec![0.1, 0.8, 0.1, 0.0, 0.0], vec![0.1, 0.3, 0.6, 0.0, 0.0]];
     let d = run(text, &word_tokens(text), &continues, WordStrategy::WordMean);
@@ -317,5 +412,11 @@ fn word_mean_uses_begin_versus_inside_to_split_neighbours() {
 #[should_panic(expected = "probabilidades")]
 fn probabilities_must_match_tokens_and_labels() {
     let text = "Ana";
-    decode(text, &word_tokens(text), &[0.5, 0.5], &labels(), &DecodeOptions::default());
+    decode(
+        text,
+        &word_tokens(text),
+        &[0.5, 0.5],
+        &labels(),
+        &DecodeOptions::default(),
+    );
 }
