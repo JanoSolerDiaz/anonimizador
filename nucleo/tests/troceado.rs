@@ -176,3 +176,12 @@ fn no_tokens_means_no_batches() {
 fn batch_size_must_be_positive() {
     plan_batches(&[10], MAX_WINDOW_TOKENS, OVERLAP_TOKENS, 0);
 }
+
+#[test]
+fn ties_go_to_the_earlier_window() {
+    // Con solape impar hay empates: (0,5), (2,7), (4,9), (5,10). El token 3
+    // está a 1 del corte en la primera ventana y a 1 en la segunda.
+    let windows = plan_windows(10, 5, 3);
+    assert_eq!(ranges(&windows), [(0, 5), (2, 7), (4, 9), (5, 10)]);
+    assert_eq!(owners(&windows, 10)[3], 0);
+}

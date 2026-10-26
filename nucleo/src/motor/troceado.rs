@@ -53,22 +53,14 @@ pub fn plan_windows(n_tokens: usize, max_len: usize, overlap: usize) -> Vec<Wind
 }
 
 /// Índice de la ventana dueña de cada token: la que contiene el token más
-/// lejos de un corte. El principio y el final del texto no cuentan como
-/// cortes. En caso de empate gana la primera.
+/// lejos de un corte. En caso de empate gana la primera.
+///
+/// El principio y el final del texto no son cortes, pero no hace falta
+/// tratarlos aparte: cualquier otra ventana que contenga el token empieza
+/// después que la primera (o acaba antes que la última), así que en ella el
+/// token siempre está más cerca de un corte.
 pub fn owners(windows: &[Window], n_tokens: usize) -> Vec<usize> {
-    let distance = |w: &Window, token: usize| {
-        let left = if w.start == 0 {
-            usize::MAX
-        } else {
-            token - w.start
-        };
-        let right = if w.end == n_tokens {
-            usize::MAX
-        } else {
-            w.end - 1 - token
-        };
-        left.min(right)
-    };
+    let distance = |w: &Window, token: usize| (token - w.start).min(w.end - 1 - token);
     (0..n_tokens)
         .map(|token| {
             let first = windows.partition_point(|w| w.end <= token);
