@@ -25,6 +25,9 @@ pub enum Error {
     #[error("La configuración del modelo no es válida: {0}")]
     InvalidModelConfig(String),
 
+    #[error("No se ha podido preparar el texto para el modelo: {0}")]
+    Tokenizer(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }

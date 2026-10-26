@@ -22,7 +22,10 @@ fn words_of(text: &str) -> Vec<String> {
 #[test]
 fn splits_on_whitespace() {
     assert_eq!(spans("Juan Pérez"), [(0, 4), (5, 10)]);
-    assert_eq!(words_of("  Juan \t Pérez\n\nMadrid  "), ["Juan", "Pérez", "Madrid"]);
+    assert_eq!(
+        words_of("  Juan \t Pérez\n\nMadrid  "),
+        ["Juan", "Pérez", "Madrid"]
+    );
 }
 
 #[test]
@@ -34,7 +37,9 @@ fn non_breaking_space_also_separates_words() {
 fn splits_on_every_delimiter_of_the_model_card() {
     assert_eq!(
         words_of(r#"a,b;c|d"e<f>g(h)i[j]k{l}m*n^o"#),
-        ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"]
+        [
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"
+        ]
     );
 }
 
@@ -42,7 +47,13 @@ fn splits_on_every_delimiter_of_the_model_card() {
 fn keeps_dots_hyphens_at_signs_slashes_and_apostrophes_inside_words() {
     assert_eq!(
         words_of("ana@ejemplo.es 12.345.678-Z C/Mayor l'Hospitalet l·l"),
-        ["ana@ejemplo.es", "12.345.678-Z", "C/Mayor", "l'Hospitalet", "l·l"]
+        [
+            "ana@ejemplo.es",
+            "12.345.678-Z",
+            "C/Mayor",
+            "l'Hospitalet",
+            "l·l"
+        ]
     );
 }
 
@@ -83,9 +94,15 @@ fn a_token_belongs_to_the_word_it_overlaps() {
 
 #[test]
 fn tokens_with_only_spaces_or_delimiters_belong_to_no_word() {
-    // «a  (b)»: palabras «a» y «b»; tokens « », « (», «b» y «)».
+    // «a  (b)»: palabras «a» y «b»; tokens «a», « », « (», «b» y «)».
     let words = [word(0, 1), word(4, 5)];
-    let tokens = [token(0, 1), token(1, 2), token(2, 4), token(4, 5), token(5, 6)];
+    let tokens = [
+        token(0, 1),
+        token(1, 2),
+        token(2, 4),
+        token(4, 5),
+        token(5, 6),
+    ];
     assert_eq!(
         assign_words(&tokens, &words),
         [Some(0), None, None, Some(1), None]

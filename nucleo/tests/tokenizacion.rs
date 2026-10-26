@@ -14,7 +14,8 @@ const MODELS: [&str; 2] = ["modelo", "modelo-v2"];
 /// Dobles espacios, tabulador, espacio de no separación, salto de línea,
 /// acentos compuestos y descompuestos, ñ, ele geminada catalana, ligadura,
 /// emoji y delimitadores.
-const TRICKY: &str = "Hola  Juan Pérez, (Madrid)\tl·l Muñoz\u{a0}Pe\u{301}rez 😀 ﬁn.\nAna [ana@ejemplo.es]";
+const TRICKY: &str =
+    "Hola  Juan Pérez, (Madrid)\tl·l Muñoz\u{a0}Pe\u{301}rez 😀 ﬁn.\nAna [ana@ejemplo.es]";
 
 fn load(name: &str) -> TextTokenizer {
     let resources = Resources::locate().expect("no se encuentra la carpeta recursos/");
@@ -26,16 +27,24 @@ fn is_separator(c: char) -> bool {
     c.is_whitespace() || ",;|\"<>()[]{}*^".contains(c)
 }
 
-/// Comprueba que los offsets están dentro del texto, ordenados y sin solaparse,
-/// que cada palabra está cubierta entera por sus tokens y que los tokens sin
+/// Comprueba que los offsets están dentro del texto y nunca retroceden, que
+/// cada palabra está cubierta entera por sus tokens y que los tokens sin
 /// palabra solo contienen espacios o delimitadores.
 fn check_alignment(name: &str, text: &str, tokens: &[Token]) {
     let chars: Vec<char> = text.chars().collect();
-    let mut previous_end = 0;
+    // Un carácter puede dar varios tokens con la misma posición: v1 convierte
+    // la ligadura «ﬁ» en «f» + «i», y v2 parte el tabulador en dos.
+    let mut previous = (0, 0);
     for t in tokens {
-        assert!(t.start < t.end && t.end <= chars.len(), "{name}: {t:?} fuera del texto");
-        assert!(t.start >= previous_end, "{name}: {t:?} se solapa con el anterior");
-        previous_end = t.end;
+        assert!(
+            t.start < t.end && t.end <= chars.len(),
+            "{name}: {t:?} fuera del texto"
+        );
+        assert!(
+            t.start >= previous.0 && t.end >= previous.1,
+            "{name}: {t:?} retrocede respecto al token anterior"
+        );
+        previous = (t.start, t.end);
     }
 
     let words = split_words(text);
@@ -71,7 +80,10 @@ fn loading_an_invalid_tokenizer_is_a_model_load_error() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("tokenizer.json");
     std::fs::write(&path, "{\"no\": \"es un tokenizador\"}").unwrap();
-    assert!(matches!(TextTokenizer::load(&path), Err(Error::ModelLoad(_))));
+    assert!(matches!(
+        TextTokenizer::load(&path),
+        Err(Error::ModelLoad(_))
+    ));
 }
 
 #[test]
@@ -91,9 +103,11 @@ fn long_text_is_not_truncated() {
     for name in MODELS {
         let tokens = load(name).encode(&text).unwrap();
         assert!(tokens.len() > 600, "{name}: solo {} tokens", tokens.len());
-        assert_eq!(
-            tokens.last().unwrap().end,
-            text.trim_end().chars().count(),
+        // v2 convierte también el espacio final en un token; lo que importa
+        // es llegar al final de la última palabra.
+        let last_word = split_words(&text).last().unwrap().end;
+        assert!(
+            tokens.last().unwrap().end >= last_word,
             "{name}: el último token no llega al final"
         );
         check_alignment(name, &text, &tokens);
