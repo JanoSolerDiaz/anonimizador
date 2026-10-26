@@ -47,9 +47,15 @@ fn spelling_variants_share_one_marker() {
 #[test]
 fn each_type_has_its_own_counter() {
     let mut registry = MarkerRegistry::new();
-    assert_eq!(registry.assign("NOMBRE_PERSONA", "Ana Gil"), "[NOMBRE_PERSONA_0001]");
+    assert_eq!(
+        registry.assign("NOMBRE_PERSONA", "Ana Gil"),
+        "[NOMBRE_PERSONA_0001]"
+    );
     assert_eq!(registry.assign("EMAIL", "ana@ejemplo.es"), "[EMAIL_0001]");
-    assert_eq!(registry.assign("NOMBRE_PERSONA", "Luis Mas"), "[NOMBRE_PERSONA_0002]");
+    assert_eq!(
+        registry.assign("NOMBRE_PERSONA", "Luis Mas"),
+        "[NOMBRE_PERSONA_0002]"
+    );
     assert_eq!(registry.counter("NOMBRE_PERSONA"), 2);
     assert_eq!(registry.counter("EMAIL"), 1);
     assert_eq!(registry.counter("IBAN"), 0);
@@ -63,7 +69,10 @@ fn the_same_value_in_two_documents_gets_the_same_marker_and_counters_continue() 
     registry.assign("NOMBRE_PERSONA", "Luis Mas");
     // Segundo documento, con el mismo registro.
     assert_eq!(registry.assign("NOMBRE_PERSONA", "ANA GIL"), ana);
-    assert_eq!(registry.assign("NOMBRE_PERSONA", "Marta Sanz"), "[NOMBRE_PERSONA_0003]");
+    assert_eq!(
+        registry.assign("NOMBRE_PERSONA", "Marta Sanz"),
+        "[NOMBRE_PERSONA_0003]"
+    );
 }
 
 #[test]
