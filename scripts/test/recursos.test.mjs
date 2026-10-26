@@ -23,6 +23,7 @@ import {
   copiarArchivos,
   paqueteAlDia,
   leerLock,
+  modelosSeleccionados,
 } from "../lib/recursos.mjs";
 
 const sha256 = (texto) => createHash("sha256").update(texto).digest("hex");
@@ -217,11 +218,43 @@ describe("paqueteAlDia", () => {
   });
 });
 
-test("leerLock devuelve el modelo y los binarios", async () => {
+test("leerLock devuelve los dos modelos y los binarios", async () => {
   const lock = await leerLock();
-  assert.equal(lock.modelo.repositorio, "bardsai/eu-pii-anonimization-multilang");
+  assert.deepEqual(
+    lock.modelos.map((m) => [m.nombre, m.repositorio]),
+    [
+      ["v1", "bardsai/eu-pii-anonimization-multilang"],
+      ["v2", "bardsai/eu-pii-anonimization-multilang-v2"],
+    ],
+  );
   assert.deepEqual(
     lock.binarios.map((b) => b.nombre),
     ["onnxruntime", "pdfium"],
   );
+});
+
+describe("modelosSeleccionados", () => {
+  const lock = { modelos: [{ nombre: "v1" }, { nombre: "v2" }] };
+
+  test("sin opciones se descargan todos los modelos", () => {
+    assert.deepEqual(
+      modelosSeleccionados(lock, []).map((m) => m.nombre),
+      ["v1", "v2"],
+    );
+  });
+
+  test("con --modelo se descarga solo el indicado", () => {
+    assert.deepEqual(
+      modelosSeleccionados(lock, ["--modelo", "v2"]).map((m) => m.nombre),
+      ["v2"],
+    );
+  });
+
+  test("un modelo que no está en el lock da un error con los disponibles", () => {
+    assert.throws(() => modelosSeleccionados(lock, ["--modelo", "v3"]), /No hay ningún modelo "v3" en el lock. Disponibles: v1, v2/);
+  });
+
+  test("--modelo sin nombre da un error", () => {
+    assert.throws(() => modelosSeleccionados(lock, ["--modelo"]), /Falta el nombre del modelo/);
+  });
 });

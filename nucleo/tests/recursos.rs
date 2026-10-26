@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use nucleo::Error;
-use nucleo::recursos::{MODEL_FILES, Resources, platform_dir};
+use nucleo::recursos::{DEFAULT_MODEL, MODEL_FILES, Resources, platform_dir};
 
 /// Crea todos los archivos que `check_files` espera, vacíos.
 fn create_all_files(resources: &Resources) -> Vec<PathBuf> {
@@ -114,6 +114,50 @@ fn check_files_rejects_a_directory_in_place_of_a_file() {
         resources.check_files(),
         Err(Error::ResourceMissing(path)) if path == model
     ));
+}
+
+#[test]
+fn a_named_model_lives_in_its_own_folder_under_the_root() {
+    let resources = Resources::new("raiz");
+    let model = resources.model("modelo-v2");
+
+    assert_eq!(model.name(), "modelo-v2");
+    assert_eq!(model.dir(), Path::new("raiz").join("modelo-v2"));
+    assert_eq!(model.onnx_path(), model.dir().join("model_quantized.onnx"));
+    assert_eq!(model.tokenizer_path(), model.dir().join("tokenizer.json"));
+    assert_eq!(model.config_path(), model.dir().join("config.json"));
+}
+
+#[test]
+fn the_default_model_is_the_modelo_folder() {
+    let resources = Resources::new("raiz");
+    assert_eq!(DEFAULT_MODEL, "modelo");
+    assert_eq!(resources.model(DEFAULT_MODEL).dir(), resources.model_dir());
+    assert_eq!(
+        resources.model(DEFAULT_MODEL).onnx_path(),
+        resources.model_path()
+    );
+}
+
+#[test]
+fn model_check_files_reports_each_missing_model_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let model = Resources::new(dir.path()).model("modelo-v2");
+    fs::create_dir_all(model.dir()).unwrap();
+    for name in MODEL_FILES {
+        fs::write(model.dir().join(name), b"").unwrap();
+    }
+    assert!(model.check_files().is_ok());
+
+    for name in MODEL_FILES {
+        let missing = model.dir().join(name);
+        fs::remove_file(&missing).unwrap();
+        match model.check_files() {
+            Err(Error::ResourceMissing(path)) => assert_eq!(path, missing),
+            other => panic!("se esperaba ResourceMissing({missing:?}), llegó {other:?}"),
+        }
+        fs::write(&missing, b"").unwrap();
+    }
 }
 
 #[test]
