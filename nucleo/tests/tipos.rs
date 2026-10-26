@@ -48,7 +48,14 @@ const APPROVED: [(&str, &str); 35] = [
 ];
 
 /// Tipos que asignan las reglas deterministas.
-const RULE_MARKERS: [&str; 6] = ["DNI", "NIE", "IBAN", "TARJETA_BANCARIA", "EMAIL", "TELEFONO"];
+const RULE_MARKERS: [&str; 6] = [
+    "DNI",
+    "NIE",
+    "IBAN",
+    "TARJETA_BANCARIA",
+    "EMAIL",
+    "TELEFONO",
+];
 
 #[test]
 fn every_approved_label_maps_to_its_approved_marker() {
@@ -79,7 +86,10 @@ fn dni_nie_and_iban_are_rule_only_types() {
     let table = TypeTable::builtin();
     let model_markers: BTreeSet<&str> = APPROVED.iter().map(|(_, marker)| *marker).collect();
     for marker in ["DNI", "NIE", "IBAN"] {
-        assert!(!model_markers.contains(marker), "{marker} no debe venir del modelo");
+        assert!(
+            !model_markers.contains(marker),
+            "{marker} no debe venir del modelo"
+        );
         assert!(table.contains_marker(marker));
     }
 }
@@ -110,7 +120,10 @@ fn every_marker_is_unique_and_safe_inside_a_bracketed_marker() {
                 .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'),
             "{marker}"
         );
-        assert!(!marker.starts_with('_') && !marker.ends_with('_'), "{marker}");
+        assert!(
+            !marker.starts_with('_') && !marker.ends_with('_'),
+            "{marker}"
+        );
     }
 }
 
@@ -133,7 +146,10 @@ fn labels_from_config_rejects_gaps_and_bad_ids() {
         "no es json",
     ] {
         assert!(
-            matches!(labels_from_config(config), Err(Error::InvalidModelConfig(_))),
+            matches!(
+                labels_from_config(config),
+                Err(Error::InvalidModelConfig(_))
+            ),
             "{config}"
         );
     }

@@ -19,6 +19,12 @@ pub enum Error {
     #[error("No se ha podido cargar el lector de PDF: {0}")]
     PdfiumLoad(String),
 
+    #[error("La tabla de tipos de datos no es válida: {0}")]
+    InvalidTypeTable(String),
+
+    #[error("La configuración del modelo no es válida: {0}")]
+    InvalidModelConfig(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -36,6 +42,8 @@ mod tests {
             Error::ResourceMissing(PathBuf::from("modelo.onnx")),
             Error::ModelLoad("detalle".into()),
             Error::PdfiumLoad("detalle".into()),
+            Error::InvalidTypeTable("detalle".into()),
+            Error::InvalidModelConfig("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
