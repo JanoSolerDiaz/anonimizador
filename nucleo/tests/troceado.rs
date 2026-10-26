@@ -8,8 +8,8 @@
 use std::collections::BTreeSet;
 
 use nucleo::motor::troceado::{
-    DEFAULT_BATCH_SIZE, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, WindowRef, owners,
-    plan_batches, plan_windows,
+    DEFAULT_BATCH_SIZE, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, WindowRef, owners, plan_batches,
+    plan_windows,
 };
 
 fn ranges(windows: &[Window]) -> Vec<(usize, usize)> {
@@ -55,7 +55,10 @@ fn windows_cover_every_token_without_gaps_and_overlap_enough() {
         assert_eq!(windows.first().unwrap().start, 0, "n = {n}");
         assert_eq!(windows.last().unwrap().end, n, "n = {n}");
         for w in &windows {
-            assert!(w.start < w.end && w.len() <= MAX_WINDOW_TOKENS, "n = {n}: {w:?}");
+            assert!(
+                w.start < w.end && w.len() <= MAX_WINDOW_TOKENS,
+                "n = {n}: {w:?}"
+            );
         }
         for pair in windows.windows(2) {
             let (a, b) = (pair[0], pair[1]);
@@ -68,8 +71,16 @@ fn windows_cover_every_token_without_gaps_and_overlap_enough() {
 /// Distancia del token al corte más cercano de la ventana. El principio y el
 /// final del texto no son cortes: ahí no hay contexto que perder.
 fn distance_to_cut(w: Window, token: usize, n: usize) -> usize {
-    let left = if w.start == 0 { usize::MAX } else { token - w.start };
-    let right = if w.end == n { usize::MAX } else { w.end - 1 - token };
+    let left = if w.start == 0 {
+        usize::MAX
+    } else {
+        token - w.start
+    };
+    let right = if w.end == n {
+        usize::MAX
+    } else {
+        w.end - 1 - token
+    };
     left.min(right)
 }
 
@@ -90,7 +101,10 @@ fn each_token_has_one_owner_that_contains_it_and_is_farthest_from_a_cut() {
                 .unwrap();
             assert_eq!(distance_to_cut(w, token, n), best, "n = {n}, token {token}");
         }
-        assert!(owner.windows(2).all(|p| p[0] <= p[1]), "n = {n}: dueños desordenados");
+        assert!(
+            owner.windows(2).all(|p| p[0] <= p[1]),
+            "n = {n}: dueños desordenados"
+        );
     }
 }
 
@@ -128,8 +142,7 @@ fn batches_mix_segments_and_contain_every_window_once() {
         .collect();
     assert_eq!(unique.len(), 5);
     for (segment, &n) in counts.iter().enumerate() {
-        let expected: BTreeSet<(usize, usize)> =
-            ranges(&plan(n)).into_iter().collect();
+        let expected: BTreeSet<(usize, usize)> = ranges(&plan(n)).into_iter().collect();
         let found: BTreeSet<(usize, usize)> = all
             .iter()
             .filter(|r| r.segment == segment)

@@ -136,7 +136,7 @@ Eran las reglas deterministas. Jano decidió no hacerlas (ver «Sin reglas deter
 
 ### Task 6: Troceado
 - **Action**: `plan_windows(n_tokens, max = 510, overlap = 128)` y `owner_window(token)`, que elige la ventana donde el token está más lejos del borde. Agrupar ventanas de varios segmentos en lotes de tamaño configurable (8 por defecto).
-- **Validate**: pruebas puras con límites (0, 1, 510, 511, 1000 tokens), cobertura completa sin huecos y un único dueño por token. Prueba del PRD con el modelo real: una entidad en la zona de solape se detecta una sola vez.
+- **Validate**: pruebas puras con límites (0, 1, 510, 511, 1000 tokens), cobertura completa sin huecos y un único dueño por token. La prueba del PRD con el modelo real (una entidad en la zona de solape se detecta una sola vez) pasa a la Task 8, porque necesita el motor completo.
 
 ### Task 7: Decodificación
 - **Action**: softmax; BIO, donde un `I-` sin `B-` del mismo tipo abre entidad; dos estrategias de palabra: `FirstSubtoken` (la del PRD) y `WordMean` (la de la tarjeta de v2: media de probabilidades de los subtokens, uniendo B- e I- de cada tipo); umbral sobre la puntuación media (0,5 por defecto, configurable); recorte de espacios y puntuación en los bordes.
@@ -144,7 +144,7 @@ Eran las reglas deterministas. Jano decidió no hacerlas (ver «Sin reglas deter
 
 ### Task 8: Inferencia y `Engine`
 - **Action**: Sesión única con `Mutex`, telemetría desactivada, hilos internos = mitad de núcleos; lotes con relleno y `attention_mask`; lectura de `id2label` desde `config.json`; `Engine::detect` de extremo a extremo.
-- **Validate**: integración (ignorada) con v1 y v2: "Carlos García, DNI 12345678Z, Madrid, +34 612 345 678." da NOMBRE_PERSONA, ID_DOCUMENTO_PERSONA, LUGAR y TELEFONO con los offsets exactos; segmentos vacíos y solo espacios no fallan.
+- **Validate**: integración (ignorada) con v1 y v2: "Carlos García, DNI 12345678Z, Madrid, +34 612 345 678." da NOMBRE_PERSONA, ID_DOCUMENTO_PERSONA, LUGAR y TELEFONO con los offsets exactos; segmentos vacíos y solo espacios no fallan; prueba del PRD: en un texto de más de 512 tokens, una entidad en la zona de solape se detecta una sola vez.
 
 ### Task 9: Fusión
 - **Action**: Si se solapan dos entidades, gana la de mayor puntuación. Después de resolver los solapes se descartan las entidades de los tipos opcionales que el usuario haya desmarcado.

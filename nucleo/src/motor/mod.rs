@@ -7,3 +7,4 @@ pub mod marcadores;
 pub mod texto;
 pub mod tipos;
 pub mod tokenizacion;
+pub mod troceado;
