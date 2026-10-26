@@ -382,9 +382,12 @@ fn first_subtoken_decides_the_whole_word() {
 #[test]
 fn word_mean_pools_begin_and_inside_across_subtokens() {
     let (text, tokens) = two_subtokens();
-    // Primer subtoken: O gana (0,4). Media de la palabra: O 0,4; PERSONA
-    // (0,3 + 0,3 + 0,1 + 0,5) / 2 = 0,6.
-    let rows = [vec![0.4, 0.3, 0.3, 0.0, 0.0], vec![0.4, 0.1, 0.5, 0.0, 0.0]];
+    // Primer subtoken: gana O (0,55 frente a 0,45 de PERSONA). Media de la
+    // palabra: O (0,55 + 0,25) / 2 = 0,4; PERSONA (0,45 + 0,75) / 2 = 0,6.
+    let rows = [
+        vec![0.55, 0.25, 0.2, 0.0, 0.0],
+        vec![0.25, 0.05, 0.7, 0.0, 0.0],
+    ];
     assert!(run(text, &tokens, &rows, WordStrategy::FirstSubtoken).is_empty());
     let d = run(text, &tokens, &rows, WordStrategy::WordMean);
     assert_eq!(found(text, &d), pairs(&[("Pérez", "PERSON_NAME")]));
@@ -419,4 +422,17 @@ fn probabilities_must_match_tokens_and_labels() {
         &labels(),
         &DecodeOptions::default(),
     );
+}
+
+#[test]
+fn an_entity_exactly_at_the_threshold_is_kept() {
+    // El PRD descarta las que quedan «por debajo» del umbral.
+    let text = "Ana";
+    let d = run(
+        text,
+        &word_tokens(text),
+        &[row(B_PER, 0.5)],
+        WordStrategy::FirstSubtoken,
+    );
+    assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME")]));
 }
