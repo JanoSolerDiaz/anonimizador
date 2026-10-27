@@ -534,3 +534,12 @@ fn word_mean_ignores_tokens_that_start_in_trimmed_edge_punctuation() {
     let d = run(text, &tokens, &rows, WordStrategy::WordMean);
     assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME")]));
 }
+
+#[test]
+fn word_mean_begin_mass_of_exactly_one_half_starts_a_new_entity() {
+    // La referencia une solo si la B- del primer subtoken es menor que 0,5.
+    let text = "Ana Luis";
+    let rows = [vec![0.1, 0.8, 0.1, 0.0, 0.0], vec![0.1, 0.5, 0.4, 0.0, 0.0]];
+    let d = run(text, &word_tokens(text), &rows, WordStrategy::WordMean);
+    assert_eq!(found(text, &d).len(), 2);
+}
