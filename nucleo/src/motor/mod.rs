@@ -22,6 +22,8 @@ use troceado::{
     plan_windows,
 };
 
+use std::time::{Duration, Instant};
+
 use crate::recursos::{ModelPaths, Resources};
 use crate::{Error, Result};
 
@@ -46,6 +48,14 @@ impl Default for EngineOptions {
             skipped: SkippedTypes::default(),
         }
     }
+}
+
+/// Tiempo de cada fase de una llamada a `Engine::detect_timed`.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Timings {
+    pub tokenization: Duration,
+    pub inference: Duration,
+    pub decoding: Duration,
 }
 
 /// Dato personal detectado. `start` y `end` son posiciones en caracteres
@@ -101,17 +111,33 @@ impl Engine {
         segments: &[S],
         options: &EngineOptions,
     ) -> Result<Vec<Entity>> {
+        self.detect_timed(segments, options)
+            .map(|(entities, _)| entities)
+    }
+
+    /// Como `detect_with`, y además devuelve el tiempo de cada fase.
+    pub fn detect_timed<S: AsRef<str>>(
+        &self,
+        segments: &[S],
+        options: &EngineOptions,
+    ) -> Result<(Vec<Entity>, Timings)> {
+        let mut timings = Timings::default();
+        let clock = Instant::now();
         let texts: Vec<&str> = segments.iter().map(AsRef::as_ref).collect();
         let tokens = texts
             .iter()
             .map(|text| self.tokenizer.encode(text))
             .collect::<Result<Vec<Vec<Token>>>>()?;
+        timings.tokenization = clock.elapsed();
         let counts: Vec<usize> = tokens.iter().map(Vec::len).collect();
         let windows: Vec<Vec<Window>> = counts
             .iter()
             .map(|&n| plan_windows(n, MAX_WINDOW_TOKENS, OVERLAP_TOKENS))
             .collect();
+        let clock = Instant::now();
         let logits = self.window_logits(&tokens, &counts, &windows, options.batch_size)?;
+        timings.inference = clock.elapsed();
+        let clock = Instant::now();
 
         let width = self.labels.len();
         let table = TypeTable::builtin();
@@ -153,7 +179,8 @@ impl Engine {
             }
         }
         options.skipped.retain(&mut entities);
-        Ok(entities)
+        timings.decoding = clock.elapsed();
+        Ok((entities, timings))
     }
 
     /// Pasa todas las ventanas por el modelo en lotes y devuelve los logits de

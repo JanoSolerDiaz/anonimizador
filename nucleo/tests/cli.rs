@@ -158,7 +158,10 @@ fn entidades_with_a_missing_file_fails_with_a_clear_message() {
     let output = cli(&["entidades", missing.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     let message = stderr(&output);
-    assert!(message.starts_with("No se puede leer el archivo"), "{message}");
+    assert!(
+        message.starts_with("No se puede leer el archivo"),
+        "{message}"
+    );
     assert!(message.contains("no-existe.txt"), "{message}");
     assert!(stdout(&output).is_empty());
 }
@@ -219,7 +222,11 @@ fn parse_entities(json: &str, source: &str) -> Vec<(u64, String, String)> {
             assert!(e["etiqueta"].as_str().is_some_and(|l| !l.is_empty()));
             let score = e["puntuacion"].as_f64().unwrap();
             assert!((0.0..=1.0).contains(&score));
-            (segment, text.to_owned(), e["tipo"].as_str().unwrap().to_owned())
+            (
+                segment,
+                text.to_owned(),
+                e["tipo"].as_str().unwrap().to_owned(),
+            )
         })
         .collect()
 }
@@ -259,7 +266,10 @@ fn entidades_can_skip_optional_types() {
         .into_iter()
         .map(|(_, _, kind)| kind)
         .collect();
-    assert_eq!(kinds, ["NOMBRE_PERSONA", "ID_DOCUMENTO_PERSONA", "TELEFONO"]);
+    assert_eq!(
+        kinds,
+        ["NOMBRE_PERSONA", "ID_DOCUMENTO_PERSONA", "TELEFONO"]
+    );
 }
 
 #[test]
