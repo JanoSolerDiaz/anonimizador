@@ -52,7 +52,13 @@ fn skipping_lugar_keeps_postal_addresses() {
     SkippedTypes::new(&["LUGAR"]).unwrap().retain(&mut entities);
     assert_eq!(
         kinds(&entities),
-        ["NOMBRE_PERSONA", "CARGO", "DIRECCION_POSTAL", "IMPORTE", "COORDENADAS"]
+        [
+            "NOMBRE_PERSONA",
+            "CARGO",
+            "DIRECCION_POSTAL",
+            "IMPORTE",
+            "COORDENADAS"
+        ]
     );
 }
 
@@ -78,7 +84,10 @@ fn a_mandatory_type_cannot_be_skipped() {
         Err(error @ Error::TypeNotOptional(_)) => {
             let message = error.to_string();
             assert!(message.contains("NOMBRE_PERSONA"), "{message}");
-            assert!(message.contains("CARGO") && message.contains("COORDENADAS"), "{message}");
+            assert!(
+                message.contains("CARGO") && message.contains("COORDENADAS"),
+                "{message}"
+            );
         }
         other => panic!("se esperaba TypeNotOptional, llegó {other:?}"),
     }
@@ -100,7 +109,12 @@ fn the_engine_drops_skipped_types() {
     static ENGINE: OnceLock<Engine> = OnceLock::new();
     let engine = ENGINE.get_or_init(|| {
         let resources = Resources::locate().expect("no se encuentra la carpeta recursos/");
-        Engine::load(&resources, &resources.model("modelo"), EngineOptions::default()).unwrap()
+        Engine::load(
+            &resources,
+            &resources.model("modelo"),
+            EngineOptions::default(),
+        )
+        .unwrap()
     });
     let segments = ["Carlos García, DNI 12345678Z, Madrid, +34 612 345 678."];
     let options = EngineOptions {

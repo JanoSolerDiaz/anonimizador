@@ -1,11 +1,12 @@
 //! Motor de anonimización: tokenización, inferencia ONNX, troceado,
-//! decodificación BIO y marcadores.
+//! decodificación BIO, tipos opcionales y marcadores.
 //!
 //! Solo trabaja con texto; no sabe nada de formatos de archivo. Hito 2.
 
 pub mod decodificacion;
 pub mod inferencia;
 pub mod marcadores;
+pub mod opcionales;
 pub mod texto;
 pub mod tipos;
 pub mod tokenizacion;
@@ -13,6 +14,7 @@ pub mod troceado;
 
 use decodificacion::{DecodeOptions, Labels, decode, softmax_rows};
 use inferencia::Inference;
+use opcionales::SkippedTypes;
 use tipos::{TypeTable, labels_from_config};
 use tokenizacion::{TextTokenizer, Token};
 use troceado::{
@@ -23,13 +25,15 @@ use troceado::{
 use crate::recursos::{ModelPaths, Resources};
 use crate::{Error, Result};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EngineOptions {
     pub decode: DecodeOptions,
     /// Ventanas por pasada del modelo.
     pub batch_size: usize,
     /// Hilos de ONNX Runtime para cada pasada. Solo se usa al cargar.
     pub threads: usize,
+    /// Tipos opcionales que el usuario ha decidido no sustituir.
+    pub skipped: SkippedTypes,
 }
 
 impl Default for EngineOptions {
@@ -39,6 +43,7 @@ impl Default for EngineOptions {
             decode: DecodeOptions::default(),
             batch_size: DEFAULT_BATCH_SIZE,
             threads: (cores / 2).max(1),
+            skipped: SkippedTypes::default(),
         }
     }
 }
@@ -88,8 +93,9 @@ impl Engine {
         self.detect_with(segments, &self.options)
     }
 
-    /// Entidades de cada segmento con otras opciones de decodificación y de
-    /// lote. `options.threads` no se usa: los hilos se fijan al cargar.
+    /// Entidades de cada segmento con otras opciones de decodificación, de
+    /// lote y de tipos opcionales. `options.threads` no se usa: los hilos se
+    /// fijan al cargar.
     pub fn detect_with<S: AsRef<str>>(
         &self,
         segments: &[S],
@@ -146,6 +152,7 @@ impl Engine {
                 });
             }
         }
+        options.skipped.retain(&mut entities);
         Ok(entities)
     }
 

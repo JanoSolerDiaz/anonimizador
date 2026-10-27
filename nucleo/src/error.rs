@@ -31,6 +31,12 @@ pub enum Error {
     #[error("No se ha podido analizar el texto con el modelo: {0}")]
     Inference(String),
 
+    #[error("No existe el tipo de dato «{0}».")]
+    UnknownType(String),
+
+    #[error("Este tipo de dato no se puede dejar sin sustituir: {0}.")]
+    TypeNotOptional(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -52,6 +58,8 @@ mod tests {
             Error::InvalidModelConfig("detalle".into()),
             Error::Tokenizer("detalle".into()),
             Error::Inference("detalle".into()),
+            Error::UnknownType("SITIO".into()),
+            Error::TypeNotOptional("NOMBRE_PERSONA".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
