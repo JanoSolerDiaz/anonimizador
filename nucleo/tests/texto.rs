@@ -167,4 +167,5 @@ fn a_comma_between_digits_does_not_split_the_word() {
         ]
     );
     assert_eq!(words_of(",5 y 5,"), ["5", "y", "5"]);
+    assert_eq!(words_of("piso B,2"), ["piso", "B", "2"]);
 }
