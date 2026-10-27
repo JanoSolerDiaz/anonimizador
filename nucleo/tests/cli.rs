@@ -287,7 +287,16 @@ fn entidades_accepts_model_strategy_and_threshold() {
         "0",
     ]);
     assert!(output.status.success(), "{}", stderr(&output));
-    assert_eq!(parse_entities(&stdout(&output), SAMPLE).len(), 4);
+    // Con la estrategia de primer subtoken, v2 clasifica el DNI como referencia.
+    assert_eq!(
+        parse_entities(&stdout(&output), SAMPLE),
+        triples(&[
+            (1, "Carlos García", "NOMBRE_PERSONA"),
+            (1, "12345678Z", "ID_DOCUMENTO_PERSONA"),
+            (1, "Madrid", "LUGAR"),
+            (1, "+34 612 345 678", "TELEFONO"),
+        ])
+    );
 }
 
 #[test]
@@ -318,4 +327,33 @@ fn entidades_on_a_file_without_data_prints_an_empty_list() {
     let output = cli(&["entidades", path.to_str().unwrap()]);
     assert!(output.status.success(), "{}", stderr(&output));
     assert_eq!(stdout(&output).trim(), "[]");
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn entidades_passes_the_strategy_to_the_engine() {
+    // Con este párrafo, v2 solo ve la fecha «1985» con la media de palabra.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("medico.txt");
+    let text = "El Dr. Josep Maria Fàbregas atendió a Núria Soler el 3 de marzo de 1985 por diabetes tipo 2.\n";
+    std::fs::write(&path, text).unwrap();
+    let kinds = |strategy: &str| -> Vec<String> {
+        let output = cli(&[
+            "entidades",
+            path.to_str().unwrap(),
+            "--modelo",
+            "modelo-v2",
+            "--decodificacion",
+            strategy,
+            "--umbral",
+            "0",
+        ]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        parse_entities(&stdout(&output), text)
+            .into_iter()
+            .map(|(_, _, kind)| kind)
+            .collect()
+    };
+    assert!(!kinds("primer").contains(&"FECHA_NACIMIENTO".to_owned()));
+    assert!(kinds("media").contains(&"FECHA_NACIMIENTO".to_owned()));
 }
