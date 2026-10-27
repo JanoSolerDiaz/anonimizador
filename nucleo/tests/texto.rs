@@ -121,3 +121,37 @@ fn no_words_means_no_assignments() {
     assert_eq!(assign_words(&[token(0, 1)], &[]), [None]);
     assert!(assign_words(&[], &[word(0, 1)]).is_empty());
 }
+
+// ---------------------------------------------------------------- párrafos
+
+use nucleo::motor::texto::{Paragraph, split_paragraphs};
+
+fn paragraphs(text: &str) -> Vec<(usize, &str)> {
+    split_paragraphs(text)
+        .into_iter()
+        .map(|Paragraph { start, text }| (start, text))
+        .collect()
+}
+
+#[test]
+fn paragraphs_are_separated_by_blank_lines() {
+    assert_eq!(paragraphs("A\nB\n\nC"), [(0, "A\nB"), (5, "C")]);
+    assert_eq!(paragraphs("A\n \t \nC"), [(0, "A"), (6, "C")]);
+}
+
+#[test]
+fn windows_line_endings_are_not_part_of_the_paragraph() {
+    assert_eq!(paragraphs("A\r\nB\r\n\r\nC\r\n"), [(0, "A\r\nB"), (8, "C")]);
+}
+
+#[test]
+fn leading_and_trailing_blank_lines_are_ignored() {
+    assert_eq!(paragraphs("\n\n  \nA\n\n\n"), [(5, "A")]);
+    assert!(paragraphs("").is_empty());
+    assert!(paragraphs("\n \n\t\n").is_empty());
+}
+
+#[test]
+fn paragraph_starts_are_in_characters() {
+    assert_eq!(paragraphs("ñú\n\né😀"), [(0, "ñú"), (4, "é😀")]);
+}
