@@ -6,7 +6,7 @@
 
 ## Summary
 
-Construir en `nucleo::motor` el motor que recibe segmentos de texto y devuelve entidades con su posición en caracteres. Incluye tokenización con offsets, troceado en ventanas de 512 tokens con solape de 128, inferencia ONNX por lotes, decodificación BIO, resolución de solapes entre entidades y registro de marcadores en memoria (el almacén cifrado llega en el hito 3). La CLI gana `cli entidades archivo.txt`, que imprime JSON. Todo se implementa con TDD.
+Construir en `nucleo::motor` el motor que recibe segmentos de texto y devuelve entidades con su posición en caracteres. Incluye tokenización con offsets, troceado en ventanas de 512 tokens con solape de 128, inferencia ONNX por lotes, decodificación BIO, descarte de los tipos opcionales desmarcados y registro de marcadores en memoria (el almacén cifrado llega en el hito 3). La CLI gana `cli entidades archivo.txt`, que imprime JSON. Todo se implementa con TDD.
 
 Hay dos versiones del modelo de IA y aún no sabemos cuál conviene: la v1, que es la que indica el PRD, y la v2, más reciente y en principio mejor. Jano decidió el 2026-10-26 probar las dos y elegir con datos. Por eso el código del motor no lleva escrito qué modelo usa: lo lee de la carpeta que se le indique. Qué modelo se descarga lo decide `scripts/recursos.lock.json`, el archivo que fija versiones y huellas SHA-256. Así, cambiar de modelo consiste en editar ese archivo y volver a ejecutar el script de descarga, sin tocar el código. En la Task 12 se miden los dos con el mismo corpus de prueba y Jano elige.
 
@@ -39,7 +39,7 @@ Segment{id, text} ─► words (segmentación propia, independiente del modelo)
                  ─► batches (relleno al más largo) ─► ONNX ─► logits
                  ─► por token: la ventana donde está más lejos del borde
                  ─► decoder (FirstSubtoken | WordMean) ─► entidades del modelo
-merge: si dos entidades se solapan, gana la de mayor puntuación
+tipos opcionales desmarcados: se descartan al final
 MarkerRegistry: clave normalizada → [TIPO_NNNN] (en memoria; el almacén lo persiste en el hito 3)
 ```
 
@@ -78,7 +78,7 @@ Va en `nucleo/config/tipos.json`, versionada y cargada con `include_str!`. Una p
 | CRIMINAL_OFFENCE_DATA | `ANTECEDENTES` | | | |
 
 
-Tipos que el usuario puede elegir (decisión de Jano del 2026-10-26): `CARGO`, `IMPORTE`, `LUGAR` y `COORDENADAS`. En el resto de tipos la sustitución es siempre obligatoria. Para estos cuatro, en el momento de anonimizar el usuario puede indicar si quiere sustituirlos o no, y por defecto todos están marcados para sustituirse. En la tabla esto se representa con un campo `opcional: true` en esos cuatro tipos. El motor recibe en sus opciones la lista de tipos opcionales que el usuario ha desmarcado y descarta esas entidades al final, después de resolver los solapes. Un tipo que no sea opcional nunca se puede desactivar, aunque alguien lo pida: el motor devuelve un error. En este hito la elección se hace con una opción de la CLI; las casillas de la interfaz llegan en el hito 5. Es un cambio respecto al PRD y se registrará en `DECISIONES.md`.
+Tipos que el usuario puede elegir (decisión de Jano del 2026-10-26): `CARGO`, `IMPORTE`, `LUGAR` y `COORDENADAS`. En el resto de tipos la sustitución es siempre obligatoria. Para estos cuatro, en el momento de anonimizar el usuario puede indicar si quiere sustituirlos o no, y por defecto todos están marcados para sustituirse. En la tabla esto se representa con un campo `opcional: true` en esos cuatro tipos. El motor recibe en sus opciones la lista de tipos opcionales que el usuario ha desmarcado y descarta esas entidades al final, al final. Un tipo que no sea opcional nunca se puede desactivar, aunque alguien lo pida: el motor devuelve un error. En este hito la elección se hace con una opción de la CLI; las casillas de la interfaz llegan en el hito 5. Es un cambio respecto al PRD y se registrará en `DECISIONES.md`.
 
 ## Sin reglas deterministas (decisión de Jano del 2026-10-26)
 
@@ -101,7 +101,7 @@ El PRD pedía reglas fijas para DNI, NIE, IBAN, tarjeta, email y teléfono, que 
 | `nucleo/src/motor/troceado.rs` | CREATE | Plan de ventanas, solape y elección de la predicción más alejada del borde |
 | `nucleo/src/motor/inferencia.rs` | CREATE | Sesión ONNX (`Mutex`, hilos = núcleos/2), lotes con relleno, softmax |
 | `nucleo/src/motor/decodificacion.rs` | CREATE | BIO, subtokens → palabras (`FirstSubtoken`, `WordMean`), umbral y recorte de bordes |
-| `nucleo/src/motor/fusion.rs` | CREATE | Resolución de solapes entre entidades y descarte de tipos opcionales desmarcados |
+| `nucleo/src/motor/opcionales.rs` | CREATE | Tipos opcionales desmarcados por el usuario y su descarte |
 | `nucleo/src/motor/marcadores.rs` | CREATE | `MarkerRegistry`: contadores por tipo, `[TIPO_NNNN]`, variantes literales |
 | `nucleo/src/error.rs` | UPDATE | `Tokenizer`, `Inference`, `InvalidTypeTable` y otras variantes que hagan falta |
 | `nucleo/src/bin/cli.rs` | UPDATE | `cli entidades <archivo> [--modelo <carpeta>] [--decodificacion primer\|media]` y `cli evaluar <corpus> …` |
@@ -146,9 +146,9 @@ Eran las reglas deterministas. Jano decidió no hacerlas (ver «Sin reglas deter
 - **Action**: Sesión única con `Mutex`, telemetría desactivada, hilos internos = mitad de núcleos; lotes con relleno y `attention_mask`; lectura de `id2label` desde `config.json`; `Engine::detect` de extremo a extremo.
 - **Validate**: integración (ignorada) con v1 y v2: "Carlos García, DNI 12345678Z, Madrid, +34 612 345 678." da NOMBRE_PERSONA, ID_DOCUMENTO_PERSONA, LUGAR y TELEFONO con los offsets exactos; segmentos vacíos y solo espacios no fallan; prueba del PRD: en un texto de más de 512 tokens, una entidad en la zona de solape se detecta una sola vez.
 
-### Task 9: Fusión
-- **Action**: Si se solapan dos entidades, gana la de mayor puntuación. Después de resolver los solapes se descartan las entidades de los tipos opcionales que el usuario haya desmarcado.
-- **Validate**: pruebas puras con solapes parciales, contenidos y empates. Además: por defecto se conservan los cuatro tipos opcionales; desmarcar `LUGAR` quita los lugares pero no las direcciones postales que contienen ese lugar; pedir que se desactive un tipo obligatorio, como `NOMBRE_PERSONA`, da un error claro.
+### Task 9: Tipos opcionales
+- **Action**: `SkippedTypes`: lista de tipos opcionales que el usuario desmarca, validada contra la tabla de tipos. El motor descarta esas entidades al final. Ya no hace falta resolver solapes: la decodificación es palabra a palabra y cada token tiene una sola ventana dueña, así que dos entidades nunca se pisan (comprobado en la Task 8).
+- **Validate**: pruebas puras: por defecto se conservan los cuatro tipos opcionales; desmarcar `LUGAR` quita los lugares pero no las direcciones postales; pedir que se desactive un tipo obligatorio, como `NOMBRE_PERSONA`, o un tipo que no existe da un error claro. Integración (ignorada): la frase de la Task 8 sin `LUGAR` pierde «Madrid» y conserva el resto.
 
 ### Task 10: CLI `entidades`
 - **Action**: `cli entidades archivo.txt` imprime JSON `{segmento, inicio, fin, tipo, etiqueta, texto, puntuacion}` (un segmento por párrafo separado por línea en blanco) y, con `--tiempos`, los tiempos por fase en stderr. La opción `--no-sustituir CARGO,IMPORTE` desmarca tipos opcionales.
