@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"LUGAR","texto":"Zaragoza"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Marta Lozano Ibáñez"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Iván Prieto Salas"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"48291736Q"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"X4721930F"},
+    {"tipo":"DIRECCION_POSTAL","texto":"Calle del Coso 87, 3.º B, 50001 Zaragoza"},
+    {"tipo":"DIRECCION_POSTAL","texto":"Avenida de Madrid 112, 4.º A, 50010 Zaragoza"},
+    {"tipo":"TELEFONO","texto":"654 218 903"},
+    {"tipo":"EMAIL","texto":"ivan.prieto@correo-ejemplo.es"},
+    {"tipo":"IMPORTE","texto":"780 euros"},
+    {"tipo":"IMPORTE","texto":"1.560 euros"},
+    {"tipo":"CUENTA_BANCARIA","texto":"ES70 0049 1500 0105 1234 5678"}
+  ]
+}

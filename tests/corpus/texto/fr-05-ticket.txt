@@ -1,0 +1,11 @@
+Ticket d'assistance SUP-88120
+
+Utilisateur : clefebvre (Camille Lefebvre)
+Poste : portable, numéro de série 5CD2049LMN
+Adresse IP : 192.168.1.54
+
+Camille n'arrive plus à se connecter à la messagerie depuis la mise à jour. Elle a essayé de réinitialiser son mot de passe via https://portail.exemple-societe.fr/compte/clefebvre sans succès. Elle nous a transmis son mot de passe actuel par chat, Soleil!Paris9, et nous lui avons demandé de le changer.
+
+Elle est aussi joignable sur Signal au +33 6 98 76 54 32.
+
+Technicien : Hugo Mercier.

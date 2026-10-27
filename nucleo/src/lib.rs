@@ -6,6 +6,7 @@
 
 pub mod almacen;
 pub mod error;
+pub mod evaluacion;
 pub mod formatos;
 pub mod motor;
 pub mod recursos;

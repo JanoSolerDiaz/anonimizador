@@ -1,0 +1,11 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"PED-2025-118734"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Elena Castillo Rey"},
+    {"tipo":"DIRECCION_POSTAL","texto":"Calle Mayor 23, 2.º izquierda, 28013 Madrid"},
+    {"tipo":"TELEFONO","texto":"611 902 457"},
+    {"tipo":"IMPORTE","texto":"189,90 €"},
+    {"tipo":"TARJETA_BANCARIA","texto":"4532 0151 1283 0366"},
+    {"tipo":"CVV_TARJETA","texto":"731"}
+  ]
+}

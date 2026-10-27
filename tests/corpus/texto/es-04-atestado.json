@@ -1,0 +1,14 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"2025/004817"},
+    {"tipo":"ORGANIZACION","texto":"Policía Local de Getafe"},
+    {"tipo":"VEHICULO","texto":"4821 KLM"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Francisco Javier Moreno Gil"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Daniel Ortega Sanz"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"21 de octubre de 1979"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"73019284B"},
+    {"tipo":"DIRECCION_POSTAL","texto":"Calle Leganés 14, 28903 Getafe"},
+    {"tipo":"ANTECEDENTES","texto":"delito de robo con violencia"},
+    {"tipo":"ANTECEDENTES","texto":"delito contra la seguridad vial"}
+  ]
+}

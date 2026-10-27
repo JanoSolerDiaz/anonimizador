@@ -1,0 +1,15 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"HD-30418"},
+    {"tipo":"USUARIO","texto":"sbaker"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Sophie Baker"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Sophie"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Tom Harris"},
+    {"tipo":"DISPOSITIVO","texto":"PF3K8ZQ2"},
+    {"tipo":"DISPOSITIVO","texto":"LAP-SBAKER-07"},
+    {"tipo":"IP","texto":"172.16.5.203"},
+    {"tipo":"ENLACE","texto":"https://sso.example-corp.com/reset?user=sbaker"},
+    {"tipo":"CLAVE_SECRETO","texto":"Coffee&Rain42"},
+    {"tipo":"CLAVE_SECRETO","texto":"sk_live_9f8a7b6c5d4e3f2a1b0c"}
+  ]
+}

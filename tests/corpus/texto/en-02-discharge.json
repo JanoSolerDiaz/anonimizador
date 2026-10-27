@@ -1,0 +1,17 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"St Thomas' Hospital"},
+    {"tipo":"ORGANIZACION","texto":"Lambeth Walk Practice"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Harold James Whitfield"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Whitfield"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Priya Raman"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"22/09/1946"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"943 476 5919"},
+    {"tipo":"TELEFONO","texto":"020 7946 0321"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"aged 78"},
+    {"tipo":"DATOS_SALUD","texto":"chronic obstructive pulmonary disease"},
+    {"tipo":"DATOS_SALUD","texto":"type 1 diabetes"},
+    {"tipo":"DATOS_SALUD","texto":"Parkinson's disease"},
+    {"tipo":"CARGO","texto":"Head of Respiratory Medicine"}
+  ]
+}

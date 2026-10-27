@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"LUGAR","texto":"Girona"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Montserrat Puigdemont Serra"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Jordi Vilaró Casals"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"52648190V"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"39174625J"},
+    {"tipo":"DIRECCION_POSTAL","texto":"carrer de la Força 21, 1r 2a, 17004 Girona"},
+    {"tipo":"DIRECCION_POSTAL","texto":"plaça del Vi 4, 3r 1a, 17004 Girona"},
+    {"tipo":"TELEFONO","texto":"672 410 385"},
+    {"tipo":"EMAIL","texto":"jordi.vilaro@correu-exemple.cat"},
+    {"tipo":"IMPORTE","texto":"850 euros"},
+    {"tipo":"IMPORTE","texto":"1.700 euros"},
+    {"tipo":"CUENTA_BANCARIA","texto":"ES35 2080 5801 1001 3000 0271"}
+  ]
+}

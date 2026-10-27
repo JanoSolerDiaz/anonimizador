@@ -1,0 +1,10 @@
+Support ticket HD-30418
+
+User: sbaker (Sophie Baker)
+Device: laptop, serial number PF3K8ZQ2
+Hostname: LAP-SBAKER-07
+IP address: 172.16.5.203
+
+Sophie cannot connect to the VPN since this morning. She tried to reset her password at https://sso.example-corp.com/reset?user=sbaker but the link expired. She then sent us her current password in the chat, Coffee&Rain42, so we asked her to change it immediately. Her API key sk_live_9f8a7b6c5d4e3f2a1b0c was also pasted in the thread and has been revoked.
+
+Assigned to: Tom Harris.

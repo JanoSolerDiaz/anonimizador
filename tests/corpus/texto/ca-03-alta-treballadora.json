@@ -1,0 +1,17 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Pere Camps Ribas"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Ioana Popescu"},
+    {"tipo":"EMAIL","texto":"pere.camps@fruitsdelsegria.cat"},
+    {"tipo":"ORGANIZACION","texto":"Gestoria Lleida"},
+    {"tipo":"ORGANIZACION","texto":"Fruits del Segrià SCCL"},
+    {"tipo":"CIF","texto":"F25471939"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"Z6930247F"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"08 47302915 58"},
+    {"tipo":"CARGO","texto":"cap de magatzem"},
+    {"tipo":"CARGO","texto":"Gerent"},
+    {"tipo":"IMPORTE","texto":"26.800 €"},
+    {"tipo":"CUENTA_BANCARIA","texto":"ES83 0081 0216 7200 0001 4873"},
+    {"tipo":"LUGAR","texto":"Alcarràs"}
+  ]
+}

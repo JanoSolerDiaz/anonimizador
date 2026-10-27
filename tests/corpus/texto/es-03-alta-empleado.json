@@ -1,0 +1,18 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Laura Gómez Vidal"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Mohamed El Amrani"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Jorge Ruiz"},
+    {"tipo":"EMAIL","texto":"laura.gomez@textilesalbor.es"},
+    {"tipo":"ORGANIZACION","texto":"Textiles Albor SL"},
+    {"tipo":"CIF","texto":"B86421930"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"Y2058314N"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"28 12345678 40"},
+    {"tipo":"CARGO","texto":"técnico de mantenimiento"},
+    {"tipo":"CARGO","texto":"encargado de turno"},
+    {"tipo":"CARGO","texto":"Responsable de Recursos Humanos"},
+    {"tipo":"IMPORTE","texto":"24.500 €"},
+    {"tipo":"CUENTA_BANCARIA","texto":"ES11 0182 2370 4702 0157 6423"},
+    {"tipo":"LUGAR","texto":"Alcalá de Henares"}
+  ]
+}

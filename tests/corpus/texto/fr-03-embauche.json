@@ -1,0 +1,18 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Isabelle Fontaine"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Karim Benali"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Karim"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Thomas Leroy"},
+    {"tipo":"EMAIL","texto":"isabelle.fontaine@atelierslumiere.fr"},
+    {"tipo":"ORGANIZACION","texto":"Ateliers Lumière SARL"},
+    {"tipo":"CIF","texto":"412 839 102"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"1 92 06 69 384 102 95"},
+    {"tipo":"CARGO","texto":"technicien de maintenance"},
+    {"tipo":"CARGO","texto":"chef d'atelier"},
+    {"tipo":"CARGO","texto":"Directrice des ressources humaines"},
+    {"tipo":"IMPORTE","texto":"31 200 €"},
+    {"tipo":"CUENTA_BANCARIA","texto":"FR76 2004 1010 0505 0012 3456 187"},
+    {"tipo":"LUGAR","texto":"Villeurbanne"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Rachel Turner"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Kevin Nguyen"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Kevin"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Sandra Lopez"},
+    {"tipo":"EMAIL","texto":"rachel.turner@brightwavelabs.com"},
+    {"tipo":"ORGANIZACION","texto":"Brightwave Labs Inc"},
+    {"tipo":"ORGANIZACION","texto":"First Harbor Bank"},
+    {"tipo":"CIF","texto":"84-2916035"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"521-73-4096"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"March 3, 1991"},
+    {"tipo":"CARGO","texto":"senior data analyst"},
+    {"tipo":"CARGO","texto":"VP of Engineering"},
+    {"tipo":"CARGO","texto":"HR Manager"},
+    {"tipo":"IMPORTE","texto":"$78,500"},
+    {"tipo":"CUENTA_BANCARIA","texto":"4820193746"},
+    {"tipo":"LUGAR","texto":"Austin"}
+  ]
+}

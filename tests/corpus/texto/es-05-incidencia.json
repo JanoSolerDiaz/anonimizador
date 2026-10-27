@@ -1,0 +1,14 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"INC-58213"},
+    {"tipo":"USUARIO","texto":"pmartin"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Pablo Martín Cuesta"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Sergio Navarro"},
+    {"tipo":"DISPOSITIVO","texto":"5CG1234XYZ"},
+    {"tipo":"IP","texto":"192.168.14.77"},
+    {"tipo":"ENLACE","texto":"https://intranet.ejemplo-empresa.es/perfil/pmartin"},
+    {"tipo":"CLAVE_SECRETO","texto":"Verano2025!"},
+    {"tipo":"EMAIL","texto":"pablo.martin.c@correo-ejemplo.com"},
+    {"tipo":"CONTACTO","texto":"@pablomc"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Mossos d'Esquadra"},
+    {"tipo":"LUGAR","texto":"Sabadell"},
+    {"tipo":"REFERENCIA","texto":"08187-2025-11342"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Marc Soler Vidal"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Oriol Pujol Mas"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"17 de juny de 1988"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"64820317S"},
+    {"tipo":"DIRECCION_POSTAL","texto":"carrer de Gràcia 45, 08201 Sabadell"},
+    {"tipo":"TELEFONO","texto":"689 554 102"},
+    {"tipo":"VEHICULO","texto":"2398 HGT"},
+    {"tipo":"ANTECEDENTES","texto":"condemna anterior per receptació"}
+  ]
+}

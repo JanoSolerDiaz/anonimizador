@@ -4,14 +4,17 @@
 //!   cli version
 //!   cli comprobar-recursos [carpeta] [--modelo <nombre>]...
 //!   cli entidades <archivo> [opciones]
+//!   cli evaluar <carpeta> [opciones]
 
+use std::path::Path;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
+use nucleo::evaluacion::{Evaluation, Span, load_corpus};
 use nucleo::motor::decodificacion::WordStrategy;
 use nucleo::motor::opcionales::SkippedTypes;
 use nucleo::motor::texto::split_paragraphs;
-use nucleo::motor::{Engine, EngineOptions};
+use nucleo::motor::{Engine, EngineOptions, Timings};
 use nucleo::recursos::{DEFAULT_MODEL, Resources};
 
 const USAGE: &str = "Uso:
@@ -22,7 +25,10 @@ const USAGE: &str = "Uso:
       --decodificacion primer|media  estrategia de palabra (por defecto: primer)
       --umbral <0..1>                puntuación mínima de una entidad (por defecto: 0,5)
       --no-sustituir <T1,T2>         tipos opcionales que no se sustituyen
-      --tiempos                      tiempo de cada fase en la salida de error";
+      --tiempos                      tiempo de cada fase en la salida de error
+  cli evaluar <carpeta> [opciones]
+      --modelo, --decodificacion y --umbral como en entidades
+      --detalle                      lista las entidades no detectadas y las de más";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -42,6 +48,10 @@ fn main() -> ExitCode {
                 eprintln!("{error}");
                 ExitCode::from(2)
             }
+        },
+        Some("evaluar") => match EvaluateArgs::parse(&args[1..]) {
+            Ok(evaluate) => evaluate_corpus(evaluate),
+            Err(_) => usage(),
         },
         _ => usage(),
     }
@@ -127,6 +137,35 @@ enum ArgsError {
     Invalid(nucleo::Error),
 }
 
+/// Lee una opción del motor común a `entidades` y `evaluar`. Devuelve
+/// `Ok(false)` si `arg` no es una de ellas.
+fn parse_engine_option<'a>(
+    arg: &str,
+    args: &mut impl Iterator<Item = &'a str>,
+    model: &mut &'a str,
+    options: &mut EngineOptions,
+) -> Result<bool, ArgsError> {
+    match arg {
+        "--modelo" => *model = args.next().ok_or(ArgsError::Usage)?,
+        "--decodificacion" => {
+            options.decode.strategy = match args.next() {
+                Some("primer") => WordStrategy::FirstSubtoken,
+                Some("media") => WordStrategy::WordMean,
+                _ => return Err(ArgsError::Usage),
+            }
+        }
+        "--umbral" => {
+            options.decode.threshold = args
+                .next()
+                .and_then(|v| v.parse::<f32>().ok())
+                .filter(|t| (0.0..=1.0).contains(t))
+                .ok_or(ArgsError::Usage)?
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 /// Argumentos de `entidades`.
 struct EntitiesArgs<'a> {
     file: &'a str,
@@ -143,22 +182,10 @@ impl<'a> EntitiesArgs<'a> {
         let mut timings = false;
         let mut args = args.iter().map(String::as_str);
         while let Some(arg) = args.next() {
+            if parse_engine_option(arg, &mut args, &mut model, &mut options)? {
+                continue;
+            }
             match arg {
-                "--modelo" => model = args.next().ok_or(ArgsError::Usage)?,
-                "--decodificacion" => {
-                    options.decode.strategy = match args.next() {
-                        Some("primer") => WordStrategy::FirstSubtoken,
-                        Some("media") => WordStrategy::WordMean,
-                        _ => return Err(ArgsError::Usage),
-                    }
-                }
-                "--umbral" => {
-                    options.decode.threshold = args
-                        .next()
-                        .and_then(|v| v.parse::<f32>().ok())
-                        .filter(|t| (0.0..=1.0).contains(t))
-                        .ok_or(ArgsError::Usage)?
-                }
                 "--no-sustituir" => {
                     let list = args.next().ok_or(ArgsError::Usage)?;
                     let kinds: Vec<&str> = list
@@ -236,12 +263,179 @@ fn print_entities(args: EntitiesArgs) -> ExitCode {
     );
 
     if args.timings {
-        let ms = |d: Duration| format!("{:.1} ms", d.as_secs_f64() * 1000.0);
-        eprintln!("Carga del modelo: {}", ms(load));
-        eprintln!("Tokenización:     {}", ms(timings.tokenization));
-        eprintln!("Inferencia:       {}", ms(timings.inference));
-        eprintln!("Decodificación:   {}", ms(timings.decoding));
-        eprintln!("Total:            {}", ms(total.elapsed()));
+        eprint!("{}", timings_report(load, &timings, total.elapsed()));
+    }
+    ExitCode::SUCCESS
+}
+
+/// Tiempo de cada fase, una por línea.
+fn timings_report(load: Duration, timings: &Timings, total: Duration) -> String {
+    let ms = |d: Duration| format!("{:.1} ms", d.as_secs_f64() * 1000.0);
+    [
+        ("Carga del modelo: ", load),
+        ("Tokenización:     ", timings.tokenization),
+        ("Inferencia:       ", timings.inference),
+        ("Decodificación:   ", timings.decoding),
+        ("Total:            ", total),
+    ]
+    .iter()
+    .map(|(phase, d)| format!("{phase}{}\n", ms(*d)))
+    .collect()
+}
+
+/// Argumentos de `evaluar`.
+struct EvaluateArgs<'a> {
+    dir: &'a str,
+    model: &'a str,
+    options: EngineOptions,
+    detail: bool,
+}
+
+impl<'a> EvaluateArgs<'a> {
+    fn parse(args: &'a [String]) -> Result<Self, ArgsError> {
+        let mut dir = None;
+        let mut model = DEFAULT_MODEL;
+        let mut options = EngineOptions::default();
+        let mut detail = false;
+        let mut args = args.iter().map(String::as_str);
+        while let Some(arg) = args.next() {
+            if parse_engine_option(arg, &mut args, &mut model, &mut options)? {
+                continue;
+            }
+            match arg {
+                "--detalle" => detail = true,
+                _ if arg.starts_with("--") => return Err(ArgsError::Usage),
+                _ if dir.is_none() => dir = Some(arg),
+                _ => return Err(ArgsError::Usage),
+            }
+        }
+        Ok(Self {
+            dir: dir.ok_or(ArgsError::Usage)?,
+            model,
+            options,
+            detail,
+        })
+    }
+}
+
+/// Número con dos decimales y coma, o una raya si no hay datos.
+fn decimal(value: Option<f64>) -> String {
+    value.map_or_else(|| "—".to_owned(), |v| format!("{v:.2}").replace('.', ","))
+}
+
+fn evaluate_corpus(args: EvaluateArgs) -> ExitCode {
+    let corpus = match load_corpus(Path::new(args.dir)) {
+        Ok(corpus) => corpus,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let total = Instant::now();
+    let engine = Resources::locate().and_then(|resources| {
+        Engine::load(
+            &resources,
+            &resources.model(args.model),
+            args.options.clone(),
+        )
+    });
+    let engine = match engine {
+        Ok(engine) => engine,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let load = total.elapsed();
+
+    let mut evaluation = Evaluation::default();
+    let mut timings = Timings::default();
+    let mut details = String::new();
+    for text in &corpus {
+        let paragraphs = split_paragraphs(&text.text);
+        let segments: Vec<&str> = paragraphs.iter().map(|p| p.text).collect();
+        let (entities, spent) = match engine.detect_timed(&segments, &args.options) {
+            Ok(result) => result,
+            Err(e) => {
+                eprintln!("{}: {e}", text.name);
+                return ExitCode::FAILURE;
+            }
+        };
+        timings.tokenization += spent.tokenization;
+        timings.inference += spent.inference;
+        timings.decoding += spent.decoding;
+
+        // De posiciones dentro del párrafo a posiciones en el texto completo.
+        let detected: Vec<Span> = entities
+            .iter()
+            .map(|e| {
+                let offset = paragraphs[e.segment].start;
+                Span {
+                    start: offset + e.start,
+                    end: offset + e.end,
+                    kind: e.kind.clone(),
+                }
+            })
+            .collect();
+        let comparison = evaluation.add(&text.text, &text.expected, &detected);
+        if args.detail && !(comparison.missed.is_empty() && comparison.spurious.is_empty()) {
+            let chars: Vec<char> = text.text.chars().collect();
+            let show = |s: &Span| -> String {
+                chars[s.start..s.end]
+                    .iter()
+                    .map(|&c| if c.is_whitespace() { ' ' } else { c })
+                    .collect()
+            };
+            details.push_str(&format!("\n{}\n", text.name));
+            for s in &comparison.missed {
+                details.push_str(&format!("  No detectada: {} «{}»\n", s.kind, show(s)));
+            }
+            for s in &comparison.spurious {
+                details.push_str(&format!("  De más: {} «{}»\n", s.kind, show(s)));
+            }
+        }
+    }
+
+    let strategy = match args.options.decode.strategy {
+        WordStrategy::FirstSubtoken => "primer",
+        WordStrategy::WordMean => "media",
+    };
+    let totals = evaluation.total();
+    println!("Modelo: {}", args.model);
+    println!("Decodificación: {strategy}");
+    println!(
+        "Umbral: {}",
+        decimal(Some(f64::from(args.options.decode.threshold)))
+    );
+    println!("Textos: {}", corpus.len());
+    println!("Entidades esperadas: {}", totals.expected);
+    println!();
+    println!(
+        "{:<24}{:>11}{:>12}{:>11}{:>11}{:>15}{:>9}",
+        "Tipo", "Esperadas", "Detectadas", "Correctas", "Precisión", "Exhaustividad", "Tapadas"
+    );
+    let rows = evaluation
+        .by_kind()
+        .iter()
+        .map(|(kind, counts)| (kind.as_str(), *counts))
+        .chain(std::iter::once(("TOTAL", totals)));
+    for (kind, c) in rows {
+        println!(
+            "{:<24}{:>11}{:>12}{:>11}{:>11}{:>15}{:>9}",
+            kind,
+            c.expected,
+            c.detected,
+            c.correct,
+            decimal(c.precision()),
+            decimal(c.recall()),
+            decimal(c.coverage())
+        );
+    }
+    println!();
+    print!("{}", timings_report(load, &timings, total.elapsed()));
+    if args.detail {
+        print!("\nDiferencias:\n{details}");
     }
     ExitCode::SUCCESS
 }

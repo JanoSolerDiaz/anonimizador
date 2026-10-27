@@ -1,0 +1,14 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"SUP-88120"},
+    {"tipo":"USUARIO","texto":"clefebvre"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Camille Lefebvre"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Camille"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Hugo Mercier"},
+    {"tipo":"DISPOSITIVO","texto":"5CD2049LMN"},
+    {"tipo":"IP","texto":"192.168.1.54"},
+    {"tipo":"ENLACE","texto":"https://portail.exemple-societe.fr/compte/clefebvre"},
+    {"tipo":"CLAVE_SECRETO","texto":"Soleil!Paris9"},
+    {"tipo":"TELEFONO","texto":"+33 6 98 76 54 32"}
+  ]
+}

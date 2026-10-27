@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Arnau Riera Bonet"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Arnau"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Clara Vives"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"34 anys"},
+    {"tipo":"LUGAR","texto":"Manresa"},
+    {"tipo":"IDEOLOGIA","texto":"Esquerra Republicana"},
+    {"tipo":"SINDICATO","texto":"CCOO"},
+    {"tipo":"ORIENTACION_SEXUAL","texto":"bisexual"},
+    {"tipo":"RELIGION","texto":"budista"},
+    {"tipo":"CARGO","texto":"coordinador de logística"},
+    {"tipo":"CARGO","texto":"tècnica de selecció"},
+    {"tipo":"ORGANIZACION","texto":"Transports Bages SL"}
+  ]
+}

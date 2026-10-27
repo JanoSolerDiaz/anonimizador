@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Metropolitan Police Service"},
+    {"tipo":"REFERENCIA","texto":"4410293/25"},
+    {"tipo":"VEHICULO","texto":"LK19 XRT"},
+    {"tipo":"TARJETA_BANCARIA","texto":"4012 8888 8888 1881"},
+    {"tipo":"LUGAR","texto":"Old Kent Road"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Liam Patrick Doyle"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Connor Walsh"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"14 February 1985"},
+    {"tipo":"DIRECCION_POSTAL","texto":"62 Peckham Hill Street, London SE15 5JR"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"DOYLE852145LP9KX"},
+    {"tipo":"ANTECEDENTES","texto":"previous convictions for burglary and possession of a controlled drug"},
+    {"tipo":"ANTECEDENTES","texto":"driving while disqualified"}
+  ]
+}

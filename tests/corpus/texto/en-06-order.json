@@ -1,0 +1,11 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"ORD-559201"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Emily Carter"},
+    {"tipo":"DIRECCION_POSTAL","texto":"8 Clifton Terrace, Bristol BS8 4PZ"},
+    {"tipo":"TELEFONO","texto":"07911 123456"},
+    {"tipo":"IMPORTE","texto":"£72.40"},
+    {"tipo":"TARJETA_BANCARIA","texto":"5369 2714 6382 9011"},
+    {"tipo":"CVV_TARJETA","texto":"905"}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Ayuntamiento de Córdoba"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Antonio Heredia Cortés"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Antonio"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Rubén Heredia"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Inmaculada Ríos Vega"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"52 años"},
+    {"tipo":"ORIGEN_ETNICO","texto":"gitana"},
+    {"tipo":"CARGO","texto":"peón"},
+    {"tipo":"CARGO","texto":"delegado sindical"},
+    {"tipo":"CARGO","texto":"Trabajadora social"},
+    {"tipo":"SINDICATO","texto":"UGT"},
+    {"tipo":"RELIGION","texto":"evangelista"},
+    {"tipo":"ORIENTACION_SEXUAL","texto":"homosexual"},
+    {"tipo":"LUGAR","texto":"Sevilla"},
+    {"tipo":"DATOS_SALUD","texto":"trastorno depresivo"}
+  ]
+}

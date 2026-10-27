@@ -37,6 +37,9 @@ pub enum Error {
     #[error("Este tipo de dato no se puede dejar sin sustituir: {0}.")]
     TypeNotOptional(String),
 
+    #[error("El corpus de prueba no es válido: {0}.")]
+    Corpus(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -60,6 +63,7 @@ mod tests {
             Error::Inference("detalle".into()),
             Error::UnknownType("SITIO".into()),
             Error::TypeNotOptional("NOMBRE_PERSONA".into()),
+            Error::Corpus("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {

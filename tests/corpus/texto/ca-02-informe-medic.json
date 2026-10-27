@@ -1,0 +1,17 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Hospital Clínic de Barcelona"},
+    {"tipo":"ORGANIZACION","texto":"CAP Sant Andreu"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Josep Maria Fàbregas Roca"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Núria Bosch Ferrer"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"05/11/1949"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"11593872D"},
+    {"tipo":"TELEFONO","texto":"+34 932 275 400"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"75 anys"},
+    {"tipo":"DATOS_SALUD","texto":"infart agut de miocardi"},
+    {"tipo":"DATOS_SALUD","texto":"fibril·lació auricular"},
+    {"tipo":"DATOS_SALUD","texto":"marcapassos"},
+    {"tipo":"DATOS_SALUD","texto":"estent coronari"},
+    {"tipo":"CARGO","texto":"cap de secció de Cardiologia"}
+  ]
+}

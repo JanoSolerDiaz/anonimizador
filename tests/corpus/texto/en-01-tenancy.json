@@ -1,0 +1,15 @@
+{
+  "entidades": [
+    {"tipo":"LUGAR","texto":"Manchester"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Margaret Ellis"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Daniel Okafor"},
+    {"tipo":"DIRECCION_POSTAL","texto":"14 Didsbury Road, Manchester M20 6RT"},
+    {"tipo":"DIRECCION_POSTAL","texto":"Flat 3, 27 Wilmslow Road, Manchester M14 5TB"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"JT 48 29 17 C"},
+    {"tipo":"TELEFONO","texto":"07700 900461"},
+    {"tipo":"EMAIL","texto":"daniel.okafor@mail-example.co.uk"},
+    {"tipo":"IMPORTE","texto":"£950"},
+    {"tipo":"IMPORTE","texto":"£1,100"},
+    {"tipo":"CUENTA_BANCARIA","texto":"GB29 NWBK 6016 1331 9268 19"}
+  ]
+}

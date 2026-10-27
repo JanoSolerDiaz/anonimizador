@@ -1,0 +1,14 @@
+{
+  "entidades": [
+    {"tipo":"LUGAR","texto":"Lyon"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Catherine Dubois"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Julien Moreau"},
+    {"tipo":"DIRECCION_POSTAL","texto":"18 rue de la République, 69002 Lyon"},
+    {"tipo":"DIRECCION_POSTAL","texto":"7 place Bellecour, 69002 Lyon"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"X4RTBPFW4"},
+    {"tipo":"TELEFONO","texto":"06 12 45 78 90"},
+    {"tipo":"EMAIL","texto":"julien.moreau@courriel-exemple.fr"},
+    {"tipo":"IMPORTE","texto":"920 euros"},
+    {"tipo":"CUENTA_BANCARIA","texto":"FR76 3000 4008 2000 0123 4567 864"}
+  ]
+}

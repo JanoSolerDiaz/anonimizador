@@ -1,0 +1,18 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Fatou Diallo"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Diallo"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Moussa Diallo"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Pauline Roux"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"46 ans"},
+    {"tipo":"LUGAR","texto":"Saint-Denis"},
+    {"tipo":"LUGAR","texto":"Marseille"},
+    {"tipo":"ORIGEN_ETNICO","texto":"sénégalaise"},
+    {"tipo":"RELIGION","texto":"catholique"},
+    {"tipo":"SINDICATO","texto":"CGT"},
+    {"tipo":"IDEOLOGIA","texto":"Parti communiste français"},
+    {"tipo":"ORIENTACION_SEXUAL","texto":"homosexuel"},
+    {"tipo":"DATOS_SALUD","texto":"dépression"},
+    {"tipo":"CARGO","texto":"assistante sociale"}
+  ]
+}

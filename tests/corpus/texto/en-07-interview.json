@@ -1,0 +1,18 @@
+{
+  "entidades": [
+    {"tipo":"NOMBRE_PERSONA","texto":"Aisha Rahman"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Aisha"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Imran Rahman"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Gareth Hughes"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"41"},
+    {"tipo":"LUGAR","texto":"Bradford"},
+    {"tipo":"LUGAR","texto":"Leeds"},
+    {"tipo":"RELIGION","texto":"Muslim"},
+    {"tipo":"ORIGEN_ETNICO","texto":"British Pakistani"},
+    {"tipo":"IDEOLOGIA","texto":"Labour Party"},
+    {"tipo":"SINDICATO","texto":"Unite"},
+    {"tipo":"ORIENTACION_SEXUAL","texto":"gay"},
+    {"tipo":"DATOS_SALUD","texto":"anxiety"},
+    {"tipo":"CARGO","texto":"outreach coordinator"}
+  ]
+}

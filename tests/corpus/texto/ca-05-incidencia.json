@@ -1,0 +1,13 @@
+{
+  "entidades": [
+    {"tipo":"REFERENCIA","texto":"TS-20931"},
+    {"tipo":"USUARIO","texto":"abosch"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Anna Bosch Martí"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Ferran Llobet"},
+    {"tipo":"DISPOSITIVO","texto":"MXL9283KQ1"},
+    {"tipo":"DISPOSITIVO","texto":"3C:52:82:1A:7F:04"},
+    {"tipo":"IP","texto":"10.20.4.118"},
+    {"tipo":"ENLACE","texto":"https://correu.ajuntament-exemple.cat/login?usuari=abosch"},
+    {"tipo":"CLAVE_SECRETO","texto":"Tardor#2025"}
+  ]
+}

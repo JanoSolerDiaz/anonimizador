@@ -1,0 +1,20 @@
+From: Rachel Turner <rachel.turner@brightwavelabs.com>
+To: Payroll
+Subject: New starter details
+
+Hi team,
+
+Please set up payroll for our new hire at Brightwave Labs Inc (EIN 84-2916035):
+
+- Name: Kevin Nguyen
+- Social Security number: 521-73-4096
+- Date of birth: March 3, 1991
+- Position: senior data analyst
+- Annual salary: $78,500
+- Direct deposit: account 4820193746 at First Harbor Bank
+
+Kevin will be based in our Austin office and reports to Sandra Lopez, VP of Engineering.
+
+Thanks,
+Rachel Turner
+HR Manager

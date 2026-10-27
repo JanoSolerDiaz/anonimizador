@@ -1,0 +1,9 @@
+Order confirmation ORD-559201
+
+Thanks for shopping with us, Emily Carter.
+
+Your parcel will be delivered to 8 Clifton Terrace, Bristol BS8 4PZ. If you are not at home, the courier will call you on 07911 123456.
+
+Order total: £72.40
+
+Internal note (do not forward): the customer read out card number 5369 2714 6382 9011, security code 905, over the phone. Delete it from the CRM once the payment has gone through.

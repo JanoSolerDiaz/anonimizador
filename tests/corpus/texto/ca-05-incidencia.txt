@@ -1,0 +1,10 @@
+Tiquet de suport TS-20931
+
+Usuària: abosch (Anna Bosch Martí)
+Ordinador: sobretaula amb número de sèrie MXL9283KQ1
+Adreça MAC: 3C:52:82:1A:7F:04
+IP assignada: 10.20.4.118
+
+L'usuària no pot entrar al correu des que va canviar la contrasenya. Ha provat d'entrar per https://correu.ajuntament-exemple.cat/login?usuari=abosch i li surt un error. Per anar més ràpid, ens ha escrit la contrasenya nova al xat: Tardor#2025.
+
+L'ha atesa en Ferran Llobet.

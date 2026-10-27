@@ -1,0 +1,11 @@
+Incidencia INC-58213
+
+Usuario afectado: pmartin (Pablo Martín Cuesta)
+Equipo: portátil con número de serie 5CG1234XYZ
+Dirección IP: 192.168.14.77
+
+Descripción: el usuario no puede acceder a la intranet desde ayer. Ha intentado restablecer la contraseña desde https://intranet.ejemplo-empresa.es/perfil/pmartin sin éxito. En el chat nos ha enviado su contraseña actual, Verano2025!, y le hemos pedido que la cambie de inmediato.
+
+Contacto alternativo: pablo.martin.c@correo-ejemplo.com o @pablomc en Telegram.
+
+La incidencia la atiende Sergio Navarro.

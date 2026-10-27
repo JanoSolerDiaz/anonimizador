@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Hôpital Européen Georges-Pompidou"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Sylvie Marchand"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Marchand"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Laurent Girard"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"08/03/1985"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"2 85 03 75 123 045 14"},
+    {"tipo":"TELEFONO","texto":"01 45 67 89 12"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"39 ans"},
+    {"tipo":"DATOS_SALUD","texto":"sclérose en plaques"},
+    {"tipo":"DATOS_SALUD","texto":"épilepsie"},
+    {"tipo":"LUGAR","texto":"Montreuil"},
+    {"tipo":"CARGO","texto":"chef du service de neurologie"}
+  ]
+}

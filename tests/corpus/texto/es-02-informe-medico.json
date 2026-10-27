@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Hospital Universitario La Fe"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Rosa Martínez Ferrer"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Andrés Soler Pons"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"12/07/1958"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"20837415J"},
+    {"tipo":"TELEFONO","texto":"+34 963 554 210"},
+    {"tipo":"CARACTERISTICA_PERSONA","texto":"66 años"},
+    {"tipo":"DATOS_SALUD","texto":"diabetes tipo 2"},
+    {"tipo":"DATOS_SALUD","texto":"hipertensión arterial"},
+    {"tipo":"DATOS_SALUD","texto":"insuficiencia renal leve"},
+    {"tipo":"LUGAR","texto":"Benimaclet"},
+    {"tipo":"CARGO","texto":"jefe de servicio"}
+  ]
+}

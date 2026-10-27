@@ -1,0 +1,16 @@
+{
+  "entidades": [
+    {"tipo":"ORGANIZACION","texto":"Gendarmerie nationale"},
+    {"tipo":"LUGAR","texto":"Mérignac"},
+    {"tipo":"LUGAR","texto":"avenue de la Marne"},
+    {"tipo":"REFERENCIA","texto":"2025/01873"},
+    {"tipo":"VEHICULO","texto":"GH-482-KT"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Nicolas Bertrand"},
+    {"tipo":"NOMBRE_PERSONA","texto":"Manon Petit"},
+    {"tipo":"FECHA_NACIMIENTO","texto":"2 août 1990"},
+    {"tipo":"DIRECCION_POSTAL","texto":"33 rue Jean Jaurès, 33700 Mérignac"},
+    {"tipo":"ID_DOCUMENTO_PERSONA","texto":"900812345678"},
+    {"tipo":"ANTECEDENTES","texto":"condamnation antérieure pour violences volontaires"},
+    {"tipo":"ANTECEDENTES","texto":"conduite sous l'emprise de stupéfiants"}
+  ]
+}
