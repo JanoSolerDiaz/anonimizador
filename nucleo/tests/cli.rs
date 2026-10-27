@@ -559,3 +559,38 @@ fn evaluar_finishes_on_the_synthetic_corpus() {
     assert!(output.status.success(), "{}", stderr(&output));
     assert!(row(&stdout(&output), "TOTAL").len() == 7);
 }
+
+#[test]
+fn hilos_must_be_a_positive_number() {
+    let (_dir, path) = sample_file();
+    let file = path.to_str().unwrap();
+    for value in ["0", "dos", "-1"] {
+        for command in ["entidades", "evaluar"] {
+            let output = cli(&[command, file, "--hilos", value]);
+            assert_eq!(output.status.code(), Some(2), "{command} --hilos {value}");
+            assert!(stderr(&output).contains("Uso:"));
+        }
+    }
+    assert!(stderr(&cli(&[])).contains("--hilos <n>"));
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn entidades_accepts_hilos_and_reports_tokens() {
+    let (_dir, path) = sample_file();
+    let output = cli(&[
+        "entidades",
+        path.to_str().unwrap(),
+        "--hilos",
+        "1",
+        "--tiempos",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let timings = stderr(&output);
+    let tokens = timings
+        .lines()
+        .find_map(|l| l.strip_prefix("Tokens:"))
+        .unwrap_or_else(|| panic!("falta «Tokens:»: {timings}"));
+    assert!(tokens.trim().parse::<usize>().unwrap() > 10, "{timings}");
+    assert!(timings.contains("Hilos:            1"), "{timings}");
+}

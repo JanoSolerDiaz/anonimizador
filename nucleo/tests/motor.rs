@@ -227,3 +227,25 @@ fn an_amount_with_decimal_comma_is_detected_whole() {
         [("189,90 €".to_owned(), "IMPORTE".to_owned())]
     );
 }
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn detect_timed_counts_the_text_tokens() {
+    let segments = [
+        "Carlos García vive en Madrid.",
+        "",
+        "Llamadle al 612 345 678.",
+    ];
+    for name in MODELS {
+        let tokenizer = TextTokenizer::load(&resources().model(name).tokenizer_path()).unwrap();
+        let expected: usize = segments
+            .iter()
+            .map(|s| tokenizer.encode(s).unwrap().len())
+            .sum();
+        let (_, timings) = engine(name)
+            .detect_timed(&segments, &EngineOptions::default())
+            .unwrap();
+        assert!(expected > 0);
+        assert_eq!(timings.tokens, expected, "{name}");
+    }
+}
