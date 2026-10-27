@@ -83,7 +83,7 @@ fn a_mandatory_type_cannot_be_skipped() {
     match SkippedTypes::new(&["LUGAR", "NOMBRE_PERSONA"]) {
         Err(error @ Error::TypeNotOptional(_)) => assert_eq!(
             error.to_string(),
-            "Este tipo de dato no se puede dejar sin sustituir: NOMBRE_PERSONA.              Solo se pueden dejar sin sustituir: CARGO, LUGAR, COORDENADAS, IMPORTE."
+            "Este tipo de dato no se puede dejar sin sustituir: NOMBRE_PERSONA. Solo se pueden dejar sin sustituir: CARGO, LUGAR, COORDENADAS, IMPORTE."
         ),
         other => panic!("se esperaba TypeNotOptional, llegó {other:?}"),
     }
