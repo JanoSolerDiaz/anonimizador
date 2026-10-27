@@ -56,6 +56,8 @@ pub struct Timings {
     pub tokenization: Duration,
     pub inference: Duration,
     pub decoding: Duration,
+    /// Tokens de texto analizados, sin contar los especiales de cada ventana.
+    pub tokens: usize,
 }
 
 /// Dato personal detectado. `start` y `end` son posiciones en caracteres
@@ -130,6 +132,7 @@ impl Engine {
             .collect::<Result<Vec<Vec<Token>>>>()?;
         timings.tokenization = clock.elapsed();
         let counts: Vec<usize> = tokens.iter().map(Vec::len).collect();
+        timings.tokens = counts.iter().sum();
         let windows: Vec<Vec<Window>> = counts
             .iter()
             .map(|&n| plan_windows(n, MAX_WINDOW_TOKENS, OVERLAP_TOKENS))

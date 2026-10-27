@@ -24,10 +24,11 @@ const USAGE: &str = "Uso:
       --modelo <nombre>              carpeta del modelo dentro de recursos/ (por defecto: modelo)
       --decodificacion primer|media  estrategia de palabra (por defecto: primer)
       --umbral <0..1>                puntuación mínima de una entidad (por defecto: 0,5)
+      --hilos <n>                    hilos de cada pasada del modelo (por defecto: la mitad de los núcleos)
       --no-sustituir <T1,T2>         tipos opcionales que no se sustituyen
       --tiempos                      tiempo de cada fase en la salida de error
   cli evaluar <carpeta> [opciones]
-      --modelo, --decodificacion y --umbral como en entidades
+      --modelo, --decodificacion, --umbral y --hilos como en entidades
       --detalle                      lista las entidades no detectadas y las de más";
 
 fn main() -> ExitCode {
@@ -161,6 +162,13 @@ fn parse_engine_option<'a>(
                 .filter(|t| (0.0..=1.0).contains(t))
                 .ok_or(ArgsError::Usage)?
         }
+        "--hilos" => {
+            options.threads = args
+                .next()
+                .and_then(|v| v.parse::<usize>().ok())
+                .filter(|&n| n > 0)
+                .ok_or(ArgsError::Usage)?
+        }
         _ => return Ok(false),
     }
     Ok(true)
@@ -263,15 +271,19 @@ fn print_entities(args: EntitiesArgs) -> ExitCode {
     );
 
     if args.timings {
-        eprint!("{}", timings_report(load, &timings, total.elapsed()));
+        eprint!(
+            "{}",
+            timings_report(load, &timings, total.elapsed(), args.options.threads)
+        );
     }
     ExitCode::SUCCESS
 }
 
-/// Tiempo de cada fase, una por línea.
-fn timings_report(load: Duration, timings: &Timings, total: Duration) -> String {
+/// Tiempo de cada fase, una por línea, con los tokens analizados por
+/// segundo de análisis (sin contar la carga del modelo).
+fn timings_report(load: Duration, timings: &Timings, total: Duration, threads: usize) -> String {
     let ms = |d: Duration| format!("{:.1} ms", d.as_secs_f64() * 1000.0);
-    [
+    let mut report: String = [
         ("Carga del modelo: ", load),
         ("Tokenización:     ", timings.tokenization),
         ("Inferencia:       ", timings.inference),
@@ -280,7 +292,17 @@ fn timings_report(load: Duration, timings: &Timings, total: Duration) -> String 
     ]
     .iter()
     .map(|(phase, d)| format!("{phase}{}\n", ms(*d)))
-    .collect()
+    .collect();
+    let analysis = (timings.tokenization + timings.inference + timings.decoding).as_secs_f64();
+    report.push_str(&format!("Hilos:            {threads}\n"));
+    report.push_str(&format!("Tokens:           {}\n", timings.tokens));
+    if analysis > 0.0 {
+        report.push_str(&format!(
+            "Tokens/segundo:   {:.0}\n",
+            timings.tokens as f64 / analysis
+        ));
+    }
+    report
 }
 
 /// Argumentos de `evaluar`.
@@ -365,6 +387,7 @@ fn evaluate_corpus(args: EvaluateArgs) -> ExitCode {
         timings.tokenization += spent.tokenization;
         timings.inference += spent.inference;
         timings.decoding += spent.decoding;
+        timings.tokens += spent.tokens;
 
         // De posiciones dentro del párrafo a posiciones en el texto completo.
         let detected: Vec<Span> = entities
@@ -433,7 +456,10 @@ fn evaluate_corpus(args: EvaluateArgs) -> ExitCode {
         );
     }
     println!();
-    print!("{}", timings_report(load, &timings, total.elapsed()));
+    print!(
+        "{}",
+        timings_report(load, &timings, total.elapsed(), args.options.threads)
+    );
     if args.detail {
         print!("\nDiferencias:\n{details}");
     }
