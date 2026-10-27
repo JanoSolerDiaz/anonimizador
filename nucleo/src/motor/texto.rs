@@ -1,8 +1,9 @@
 //! Segmentación del texto en palabras, con posiciones en caracteres.
 //!
-//! Es la misma definición de palabra que usa la tarjeta del modelo v2 y no
+//! Parte de la definición de palabra de la tarjeta del modelo v2 y no
 //! depende del tokenizador: se parte por espacios y por
-//! `, ; | " < > ( ) [ ] { } * ^`. La puntuación de los bordes que no está en
+//! `, ; | " < > ( ) [ ] { } * ^`, salvo la coma entre dos cifras, que es
+//! decimal o de miles. La puntuación de los bordes que no está en
 //! esa lista (como el punto final) sigue dentro de la palabra; se recorta al
 //! decodificar las entidades.
 
@@ -21,11 +22,16 @@ fn is_separator(c: char) -> bool {
 }
 
 pub fn split_words(text: &str) -> Vec<Word> {
+    let chars: Vec<char> = text.chars().collect();
     let mut words = Vec::new();
     let mut start = None;
-    let mut position = 0;
-    for c in text.chars() {
-        match (is_separator(c), start) {
+    for (position, &c) in chars.iter().enumerate() {
+        // Una coma entre dos cifras es decimal o de miles: «189,90», «1,100».
+        let digit_comma = c == ','
+            && position > 0
+            && chars[position - 1].is_ascii_digit()
+            && chars.get(position + 1).is_some_and(char::is_ascii_digit);
+        match (is_separator(c) && !digit_comma, start) {
             (true, Some(s)) => {
                 words.push(Word {
                     start: s,
@@ -36,12 +42,11 @@ pub fn split_words(text: &str) -> Vec<Word> {
             (false, None) => start = Some(position),
             _ => {}
         }
-        position += 1;
     }
     if let Some(s) = start {
         words.push(Word {
             start: s,
-            end: position,
+            end: chars.len(),
         });
     }
     words

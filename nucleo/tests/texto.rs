@@ -1,7 +1,8 @@
 //! Segmentación en palabras y asignación de tokens a palabras.
 //!
-//! Las palabras se definen igual que en la tarjeta del modelo v2: se parte por
-//! espacios y por `, ; | " < > ( ) [ ] { } * ^`. No dependen del modelo.
+//! Las palabras parten de la definición de la tarjeta del modelo v2: se corta por
+//! espacios y por `, ; | " < > ( ) [ ] { } * ^`, salvo la coma entre dos
+//! cifras. No dependen del modelo.
 //! Todas las posiciones están en caracteres, con el final excluido.
 
 use nucleo::motor::texto::{Word, split_words};
