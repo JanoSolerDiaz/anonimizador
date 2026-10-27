@@ -357,3 +357,205 @@ fn entidades_passes_the_strategy_to_the_engine() {
     assert!(!kinds("primer").contains(&"FECHA_NACIMIENTO".to_owned()));
     assert!(kinds("media").contains(&"FECHA_NACIMIENTO".to_owned()));
 }
+
+// ---------------------------------------------------------------- evaluar
+
+/// Corpus de un solo texto con las entidades esperadas que se indiquen.
+fn sample_corpus(entities_json: &str) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("muestra.txt"), SAMPLE).unwrap();
+    std::fs::write(
+        dir.path().join("muestra.json"),
+        format!(r#"{{"entidades": {entities_json}}}"#),
+    )
+    .unwrap();
+    dir
+}
+
+const SAMPLE_ENTITIES: &str = r#"[
+    {"tipo": "NOMBRE_PERSONA", "texto": "Carlos García"},
+    {"tipo": "ID_DOCUMENTO_PERSONA", "texto": "12345678Z"},
+    {"tipo": "LUGAR", "texto": "Madrid"},
+    {"tipo": "TELEFONO", "texto": "+34 612 345 678"}
+]"#;
+
+/// Columnas de la fila de la tabla que empieza por `first`.
+fn row(report: &str, first: &str) -> Vec<String> {
+    report
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .find(|cells| cells.first().is_some_and(|c| c == first))
+        .unwrap_or_else(|| panic!("falta la fila «{first}»: {report}"))
+}
+
+#[test]
+fn usage_mentions_evaluar() {
+    assert!(stderr(&cli(&[])).contains("cli evaluar <carpeta>"));
+}
+
+#[test]
+fn evaluar_without_a_folder_prints_usage() {
+    let output = cli(&["evaluar"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).contains("Uso:"));
+}
+
+#[test]
+fn evaluar_rejects_bad_options_before_loading_anything() {
+    let dir = sample_corpus(SAMPLE_ENTITIES);
+    let folder = dir.path().to_str().unwrap();
+    for args in [
+        vec!["evaluar", folder, "--rapido"],
+        vec!["evaluar", folder, "otra"],
+        vec!["evaluar", folder, "--modelo"],
+        vec!["evaluar", folder, "--decodificacion", "otra"],
+        vec!["evaluar", folder, "--umbral", "2"],
+    ] {
+        let output = cli(&args);
+        assert_eq!(output.status.code(), Some(2), "{args:?}");
+        assert!(stderr(&output).contains("Uso:"), "{args:?}");
+    }
+}
+
+#[test]
+fn evaluar_with_an_invalid_corpus_fails_before_loading_the_model() {
+    let dir = sample_corpus(r#"[{"tipo": "NOMBRE_PERSONA", "texto": "Lucía Ferrer"}]"#);
+    let output = cli(&["evaluar", dir.path().to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    let message = stderr(&output);
+    assert!(message.contains("«Lucía Ferrer»"), "{message}");
+    assert!(message.contains("muestra"), "{message}");
+    assert!(stdout(&output).is_empty());
+}
+
+#[test]
+fn evaluar_with_a_missing_folder_fails() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = cli(&["evaluar", dir.path().join("no-existe").to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!stderr(&output).is_empty());
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_prints_a_table_by_type_with_a_total() {
+    let dir = sample_corpus(SAMPLE_ENTITIES);
+    let output = cli(&["evaluar", dir.path().to_str().unwrap()]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let report = stdout(&output);
+    assert!(report.contains("Textos: 1"), "{report}");
+    assert!(report.contains("Entidades esperadas: 4"), "{report}");
+    for header in [
+        "Tipo",
+        "Esperadas",
+        "Detectadas",
+        "Correctas",
+        "Precisión",
+        "Exhaustividad",
+        "Tapadas",
+    ] {
+        assert!(report.contains(header), "falta «{header}»: {report}");
+    }
+    assert_eq!(
+        row(&report, "LUGAR"),
+        ["LUGAR", "1", "1", "1", "1,00", "1,00", "1,00"]
+    );
+    assert_eq!(
+        row(&report, "TOTAL"),
+        ["TOTAL", "4", "4", "4", "1,00", "1,00", "1,00"]
+    );
+    for phase in [
+        "Carga del modelo",
+        "Tokenización",
+        "Inferencia",
+        "Decodificación",
+        "Total",
+    ] {
+        assert!(report.contains(phase), "falta «{phase}»: {report}");
+    }
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_counts_a_wrong_type_against_both_types() {
+    // «Madrid» anotado a propósito como organización: el modelo dirá LUGAR.
+    let dir = sample_corpus(
+        r#"[
+            {"tipo": "NOMBRE_PERSONA", "texto": "Carlos García"},
+            {"tipo": "ID_DOCUMENTO_PERSONA", "texto": "12345678Z"},
+            {"tipo": "ORGANIZACION", "texto": "Madrid"},
+            {"tipo": "TELEFONO", "texto": "+34 612 345 678"}
+        ]"#,
+    );
+    let output = cli(&["evaluar", dir.path().to_str().unwrap(), "--detalle"]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let report = stdout(&output);
+    // Sin precisión (no detectó ninguna organización), tapada por el LUGAR.
+    assert_eq!(
+        row(&report, "ORGANIZACION"),
+        ["ORGANIZACION", "1", "0", "0", "—", "0,00", "1,00"]
+    );
+    assert_eq!(
+        row(&report, "LUGAR"),
+        ["LUGAR", "0", "1", "0", "0,00", "—", "—"]
+    );
+    assert_eq!(
+        row(&report, "TOTAL"),
+        ["TOTAL", "4", "4", "3", "0,75", "0,75", "1,00"]
+    );
+    assert!(
+        report.contains("No detectada: ORGANIZACION «Madrid»"),
+        "{report}"
+    );
+    assert!(report.contains("De más: LUGAR «Madrid»"), "{report}");
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_without_detalle_does_not_list_entities() {
+    let dir = sample_corpus(r#"[{"tipo": "ORGANIZACION", "texto": "Madrid"}]"#);
+    let output = cli(&["evaluar", dir.path().to_str().unwrap()]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(!stdout(&output).contains("«Madrid»"));
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_passes_model_strategy_and_threshold() {
+    // Con umbral 1 no queda ninguna entidad: nada correcto, nada detectado.
+    let dir = sample_corpus(SAMPLE_ENTITIES);
+    let folder = dir.path().to_str().unwrap();
+    let output = cli(&["evaluar", folder, "--umbral", "1"]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert_eq!(row(&stdout(&output), "TOTAL")[1..4], ["4", "0", "0"]);
+
+    let output = cli(&[
+        "evaluar",
+        folder,
+        "--modelo",
+        "modelo-v2",
+        "--decodificacion",
+        "media",
+        "--umbral",
+        "0",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let report = stdout(&output);
+    assert!(report.contains("Modelo: modelo-v2"), "{report}");
+    assert!(report.contains("Decodificación: media"), "{report}");
+    assert!(report.contains("Umbral: 0,00"), "{report}");
+    assert_eq!(row(&report, "TOTAL")[1..4], ["4", "4", "4"]);
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_finishes_on_the_synthetic_corpus() {
+    let corpus = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/corpus/texto");
+    let output = cli(&["evaluar", corpus.to_str().unwrap()]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(row(&stdout(&output), "TOTAL").len() == 7);
+}
