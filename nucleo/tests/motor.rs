@@ -214,3 +214,16 @@ fn an_entity_in_the_overlap_is_detected_once() {
         assert_eq!(carlos[0].kind, "NOMBRE_PERSONA", "{name}");
     }
 }
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn an_amount_with_decimal_comma_is_detected_whole() {
+    // Antes la coma partía «189,90» en dos palabras y v1 dejaba los
+    // céntimos a la vista.
+    let segments = ["Importe total: 189,90 €"];
+    let entities = engine("modelo").detect(&segments).unwrap();
+    assert_eq!(
+        summary(&segments, &entities),
+        [("189,90 €".to_owned(), "IMPORTE".to_owned())]
+    );
+}

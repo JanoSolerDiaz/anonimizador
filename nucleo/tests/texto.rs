@@ -155,3 +155,15 @@ fn leading_and_trailing_blank_lines_are_ignored() {
 fn paragraph_starts_are_in_characters() {
     assert_eq!(paragraphs("ñú\n\né😀"), [(0, "ñú"), (4, "é😀")]);
 }
+
+#[test]
+fn a_comma_between_digits_does_not_split_the_word() {
+    // Coma decimal y separador de miles: «189,90 €», «£1,100».
+    assert_eq!(
+        words_of("Total: 189,90 € y £1,100, más 3, 4 y 5,a"),
+        [
+            "Total:", "189,90", "€", "y", "£1,100", "más", "3", "4", "y", "5", "a"
+        ]
+    );
+    assert_eq!(words_of(",5 y 5,"), ["5", "y", "5"]);
+}
