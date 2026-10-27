@@ -395,10 +395,11 @@ fn word_mean_pools_begin_and_inside_across_subtokens() {
 }
 
 #[test]
-fn word_mean_uses_begin_versus_inside_to_split_neighbours() {
+fn word_mean_splits_neighbours_when_the_first_subtoken_looks_like_a_begin() {
     let text = "Ana Luis";
-    // En las dos, la palabra «Luis» es PERSONA con 0,9. Lo que cambia es si
-    // pesa más B- (empieza otra persona) o I- (sigue la anterior).
+    // En las dos, la palabra «Luis» es PERSONA con 0,9. Lo que cambia es la
+    // probabilidad de B- en su primer subtoken: con 0,5 o más empieza otra
+    // persona; con menos, sigue la anterior.
     let begins = [vec![0.1, 0.8, 0.1, 0.0, 0.0], vec![0.1, 0.6, 0.3, 0.0, 0.0]];
     let d = run(text, &word_tokens(text), &begins, WordStrategy::WordMean);
     assert_eq!(
@@ -434,5 +435,102 @@ fn an_entity_exactly_at_the_threshold_is_kept() {
         &[row(B_PER, 0.5)],
         WordStrategy::FirstSubtoken,
     );
+    assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME")]));
+}
+
+// ------------------------------------------------- media de palabra (v2)
+//
+// Estas pruebas reproducen el decodificador de referencia de la tarjeta de
+// v2 (pii_detector.py, revisión 5e61416).
+
+#[test]
+fn word_mean_looks_at_begin_mass_of_the_first_subtoken_only() {
+    // «Pérez» en dos subtokens. En la media pesa más B- (0,55 frente a 0,35),
+    // pero el primer subtoken solo tiene 0,3 de B-: la palabra sigue a «Ana».
+    let text = "Ana Pérez";
+    let tokens = [
+        Token {
+            id: 0,
+            start: 0,
+            end: 3,
+        },
+        Token {
+            id: 0,
+            start: 3,
+            end: 6,
+        },
+        Token {
+            id: 0,
+            start: 6,
+            end: 9,
+        },
+    ];
+    let rows = [
+        vec![0.1, 0.9, 0.0, 0.0, 0.0],
+        vec![0.1, 0.3, 0.6, 0.0, 0.0],
+        vec![0.1, 0.8, 0.1, 0.0, 0.0],
+    ];
+    let d = run(text, &tokens, &rows, WordStrategy::WordMean);
+    assert_eq!(found(text, &d), pairs(&[("Ana Pérez", "PERSON_NAME")]));
+}
+
+#[test]
+fn word_mean_does_not_merge_across_a_line_break_or_other_separators() {
+    let continues = [row(B_PER, 0.9), row(I_PER, 0.9)];
+    for text in [
+        "Ana
+Gil",
+        "Ana; Gil",
+        "Ana | Gil",
+        "Ana: Gil",
+    ] {
+        let d = run(text, &word_tokens(text), &continues, WordStrategy::WordMean);
+        assert_eq!(found(text, &d).len(), 2, "{text:?}: {:?}", found(text, &d));
+    }
+}
+
+#[test]
+fn word_mean_merges_across_spaces_commas_hyphens_slashes_dots_and_parentheses() {
+    for text in [
+        "Calle Mayor",
+        "Mayor, 5",
+        "Mayor - 5",
+        "Mayor / 5",
+        "Mayor (5)",
+    ] {
+        // El guion y la barra sueltos son palabras: el modelo dice que no son
+        // datos, y no impiden unir «Mayor» y «5».
+        let words = split_words(text);
+        let rows: Vec<Vec<f32>> = (0..words.len())
+            .map(|i| match i {
+                0 => row(B_LOC, 0.9),
+                _ if i == words.len() - 1 => row(I_LOC, 0.9),
+                _ => row(O, 0.9),
+            })
+            .collect();
+        let d = run(text, &word_tokens(text), &rows, WordStrategy::WordMean);
+        assert_eq!(found(text, &d).len(), 1, "{text:?}: {:?}", found(text, &d));
+    }
+}
+
+#[test]
+fn word_mean_ignores_tokens_that_start_in_trimmed_edge_punctuation() {
+    // «Ana.» con un token para «Ana» y otro para «.». El punto se recorta de
+    // la palabra, así que su token no cuenta en la media.
+    let text = "Ana.";
+    let tokens = [
+        Token {
+            id: 0,
+            start: 0,
+            end: 3,
+        },
+        Token {
+            id: 0,
+            start: 3,
+            end: 4,
+        },
+    ];
+    let rows = [row(B_PER, 0.9), row(O, 0.9)];
+    let d = run(text, &tokens, &rows, WordStrategy::WordMean);
     assert_eq!(found(text, &d), pairs(&[("Ana", "PERSON_NAME")]));
 }
