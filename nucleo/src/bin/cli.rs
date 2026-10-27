@@ -379,7 +379,7 @@ fn evaluate_corpus(args: EvaluateArgs) -> ExitCode {
             })
             .collect();
         let comparison = evaluation.add(&text.text, &text.expected, &detected);
-        if args.detail && !(comparison.missed.is_empty() && comparison.spurious.is_empty()) {
+        if !(comparison.missed.is_empty() && comparison.spurious.is_empty()) {
             let chars: Vec<char> = text.text.chars().collect();
             let show = |s: &Span| -> String {
                 chars[s.start..s.end]
