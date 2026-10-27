@@ -477,6 +477,8 @@ fn evaluar_prints_a_table_by_type_with_a_total() {
     ] {
         assert!(report.contains(phase), "falta «{phase}»: {report}");
     }
+    let tokens = row(&report, "Tokens:")[1].parse::<usize>().unwrap();
+    assert!(tokens > 10, "{report}");
 }
 
 #[test]
