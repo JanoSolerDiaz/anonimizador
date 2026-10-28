@@ -20,8 +20,8 @@ use opcionales::SkippedTypes;
 use tipos::{TypeTable, labels_from_config};
 use tokenizacion::{TextTokenizer, Token};
 use troceado::{
-    DEFAULT_BATCH_SIZE, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, owners, plan_batches,
-    plan_windows,
+    DEFAULT_BATCH_SIZE, DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS,
+    OVERLAP_TOKENS, Window, batch_windows, owners, plan_windows,
 };
 
 use std::collections::BTreeMap;
@@ -204,13 +204,18 @@ impl Engine {
             placement.push((stream, streams[stream].len()));
             streams[stream].extend(segment_tokens.iter().map(|t| t.id));
         }
+        let (max_len, overlap) = if together {
+            (DOCUMENT_WINDOW_TOKENS, DOCUMENT_OVERLAP_TOKENS)
+        } else {
+            (MAX_WINDOW_TOKENS, OVERLAP_TOKENS)
+        };
         let counts: Vec<usize> = streams.iter().map(Vec::len).collect();
         let windows: Vec<Vec<Window>> = counts
             .iter()
-            .map(|&n| plan_windows(n, MAX_WINDOW_TOKENS, OVERLAP_TOKENS))
+            .map(|&n| plan_windows(n, max_len, overlap))
             .collect();
         let clock = Instant::now();
-        let logits = self.window_logits(&streams, &counts, &windows, options.batch_size)?;
+        let logits = self.window_logits(&streams, &windows, options.batch_size)?;
         timings.inference += clock.elapsed();
         let clock = Instant::now();
 
@@ -273,7 +278,6 @@ impl Engine {
     fn window_logits(
         &self,
         tokens: &[Vec<u32>],
-        counts: &[usize],
         windows: &[Vec<Window>],
         batch_size: usize,
     ) -> Result<Vec<Vec<Vec<f32>>>> {
@@ -283,7 +287,7 @@ impl Engine {
         let mut logits: Vec<Vec<Vec<f32>>> =
             windows.iter().map(|w| vec![Vec::new(); w.len()]).collect();
 
-        for batch in plan_batches(counts, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, batch_size) {
+        for batch in batch_windows(windows, batch_size) {
             let sequences: Vec<Vec<u32>> = batch
                 .iter()
                 .map(|r| {

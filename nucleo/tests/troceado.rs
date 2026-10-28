@@ -8,8 +8,8 @@
 use std::collections::BTreeSet;
 
 use nucleo::motor::troceado::{
-    DEFAULT_BATCH_SIZE, DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, WindowRef, owners, plan_batches,
-    plan_windows,
+    DEFAULT_BATCH_SIZE, DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS,
+    OVERLAP_TOKENS, Window, WindowRef, owners, plan_batches, plan_windows,
 };
 
 fn ranges(windows: &[Window]) -> Vec<(usize, usize)> {

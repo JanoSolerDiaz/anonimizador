@@ -9,6 +9,12 @@
 pub const MAX_WINDOW_TOKENS: usize = 510;
 /// Tokens que comparte cada ventana con la siguiente.
 pub const OVERLAP_TOKENS: usize = 128;
+/// Ventana y solape de la lectura seguida del documento. Son menores porque
+/// el contexto ya llega de los párrafos vecinos y releer el solape es lo que
+/// más cuesta: en el corpus protegen igual y la lectura tarda un 30 % menos
+/// (ver `DECISIONES.md`).
+pub const DOCUMENT_WINDOW_TOKENS: usize = 256;
+pub const DOCUMENT_OVERLAP_TOKENS: usize = 32;
 /// Ventanas por pasada del modelo.
 pub const DEFAULT_BATCH_SIZE: usize = 8;
 
@@ -94,14 +100,22 @@ pub fn plan_batches(
     overlap: usize,
     batch_size: usize,
 ) -> Vec<Vec<WindowRef>> {
+    let windows: Vec<Vec<Window>> = token_counts
+        .iter()
+        .map(|&n| plan_windows(n, max_len, overlap))
+        .collect();
+    batch_windows(&windows, batch_size)
+}
+
+/// Como `plan_batches`, con las ventanas de cada segmento ya planificadas.
+pub fn batch_windows(windows: &[Vec<Window>], batch_size: usize) -> Vec<Vec<WindowRef>> {
     assert!(batch_size > 0, "el tamaño de lote debe ser mayor que cero");
-    let mut all: Vec<WindowRef> = token_counts
+    let mut all: Vec<WindowRef> = windows
         .iter()
         .enumerate()
-        .flat_map(|(segment, &n)| {
-            plan_windows(n, max_len, overlap)
-                .into_iter()
-                .map(move |window| WindowRef { segment, window })
+        .flat_map(|(segment, list)| {
+            list.iter()
+                .map(move |&window| WindowRef { segment, window })
         })
         .collect();
     all.sort_by_key(|r| std::cmp::Reverse(r.window.len()));

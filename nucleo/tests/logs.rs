@@ -124,7 +124,9 @@ fn the_document_reading_counts_its_own_windows() {
     // Treinta párrafos cortos: la lectura párrafo a párrafo lee un trozo por
     // párrafo y la seguida trocea todos juntos con sus propios tamaños.
     let segments: Vec<String> = (0..30)
-        .map(|i| format!("El expediente {i} sigue abierto y pendiente de revisión por la comisión."))
+        .map(|i| {
+            format!("El expediente {i} sigue abierto y pendiente de revisión por la comisión.")
+        })
         .collect();
     let refs: Vec<&str> = segments.iter().map(String::as_str).collect();
     let (records, _) = capture_detection(&refs);
@@ -135,7 +137,10 @@ fn the_document_reading_counts_its_own_windows() {
         plan_windows(tokens, MAX_WINDOW_TOKENS, OVERLAP_TOKENS).len(),
         "la prueba no distingue los tamaños: {tokens} tokens"
     );
-    assert_eq!(detection_field(&records, "ventanas"), segments.len() + document);
+    assert_eq!(
+        detection_field(&records, "ventanas"),
+        segments.len() + document
+    );
 }
 
 #[test]
