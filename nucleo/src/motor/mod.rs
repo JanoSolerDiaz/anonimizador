@@ -23,6 +23,7 @@ use troceado::{
     plan_windows,
 };
 
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use crate::recursos::{ModelPaths, Resources};
@@ -87,12 +88,19 @@ impl Engine {
     /// Carga el tokenizador, las etiquetas de `config.json` y el modelo ONNX.
     /// Comprueba que la tabla de tipos cubre todas las etiquetas del modelo.
     pub fn load(resources: &Resources, model: &ModelPaths, options: EngineOptions) -> Result<Self> {
+        let clock = Instant::now();
         model.check_files()?;
         let tokenizer = TextTokenizer::load(&model.tokenizer_path())?;
         let names = labels_from_config(&std::fs::read_to_string(model.config_path())?)?;
         TypeTable::builtin().check_model_labels(&names)?;
         let labels = Labels::parse(&names)?;
         let inference = Inference::load(resources, model, options.threads)?;
+        tracing::info!(
+            modelo = model.name(),
+            hilos = options.threads,
+            carga_ms = ms(clock.elapsed()),
+            "modelo cargado"
+        );
         Ok(Self {
             tokenizer,
             labels,
@@ -185,6 +193,7 @@ impl Engine {
         }
         options.skipped.retain(&mut entities);
         timings.decoding = clock.elapsed();
+        log_detection(texts.len(), &windows, &entities, &timings);
         Ok((entities, timings))
     }
 
@@ -238,5 +247,31 @@ impl Engine {
             }
         }
         Ok(logits)
+    }
+}
+
+fn ms(duration: Duration) -> f64 {
+    duration.as_secs_f64() * 1000.0
+}
+
+/// Registro de una detección: solo recuentos, tipos y tiempos. Nunca texto de
+/// los documentos ni valores detectados (lo comprueba `tests/logs.rs`).
+fn log_detection(segments: usize, windows: &[Vec<Window>], entities: &[Entity], timings: &Timings) {
+    tracing::info!(
+        segmentos = segments,
+        tokens = timings.tokens,
+        ventanas = windows.iter().map(Vec::len).sum::<usize>(),
+        entidades = entities.len(),
+        tokenizacion_ms = ms(timings.tokenization),
+        inferencia_ms = ms(timings.inference),
+        decodificacion_ms = ms(timings.decoding),
+        "detección terminada"
+    );
+    let mut by_kind: BTreeMap<&str, usize> = BTreeMap::new();
+    for e in entities {
+        *by_kind.entry(e.kind.as_str()).or_default() += 1;
+    }
+    for (kind, n) in by_kind {
+        tracing::debug!(tipo = kind, n, "entidades por tipo");
     }
 }
