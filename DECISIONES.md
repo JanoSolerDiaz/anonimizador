@@ -89,3 +89,13 @@ Limitación conocida: los IMEI de los teléfonos también tienen 15 cifras con d
 ### La coma entre dos cifras no separa palabras
 
 El motor parte el texto en palabras por espacios y por `, ; | " < > ( ) [ ] { } * ^`, como la tarjeta del modelo v2. Con esa definición, «189,90 €» eran dos palabras y v1 dejaba los céntimos a la vista. Ahora una coma entre dos cifras (decimal o de miles) no separa. Es un cambio de implementación, no del PRD, pero se anota porque se aparta de la definición de la que parte.
+
+## Hito 3 · 2026-10-28
+
+### Plazo de caducidad fijado por sistemas: en el hito 6
+
+El almacén acepta el plazo de caducidad como parámetro (90 días por defecto). Leer la política que fije sistemas (clave de registro en Windows, perfil de configuración en Mac) se hace en el hito 6, junto con el empaquetado y el despliegue, que es donde se decide cómo la configura sistemas.
+
+### Más metadatos del DOCX pasan por el motor
+
+El PRD manda vaciar `dc:creator`, `cp:lastModifiedBy` y `Company`. Además, el título, el asunto, las palabras clave y la descripción del documento (`dc:title`, `dc:subject`, `cp:keywords`, `dc:description`) pueden llevar datos personales, así que se pasan por el motor como segmentos y se sustituye lo que detecte.
