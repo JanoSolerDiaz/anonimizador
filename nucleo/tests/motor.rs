@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use nucleo::Error;
 use nucleo::motor::decodificacion::WordStrategy;
 use nucleo::motor::tokenizacion::TextTokenizer;
-use nucleo::motor::{Engine, EngineOptions, Entity};
+use nucleo::motor::{ContextMode, Engine, EngineOptions, Entity};
 use nucleo::recursos::Resources;
 
 /// Modelos que se prueban. Si se vuelve a comparar otro, se añade aquí.
@@ -70,6 +70,7 @@ fn default_options() {
     assert_eq!(options.threads, (cores / 2).max(1));
     assert_eq!(options.decode.strategy, WordStrategy::FirstSubtoken);
     assert_eq!(options.decode.threshold, 0.5);
+    assert_eq!(options.context, ContextMode::Document);
 }
 
 #[test]
@@ -261,4 +262,102 @@ fn the_card_rule_covers_cards_the_model_only_partly_detects() {
             && "5369 2714 6382 9011".contains(text.as_str())),
         "quedan trozos de la tarjeta: {found:?}"
     );
+}
+
+// ---------------------------------------------------------------- contexto
+
+fn with_context(context: ContextMode) -> EngineOptions {
+    EngineOptions {
+        context,
+        ..EngineOptions::default()
+    }
+}
+
+/// Párrafos de un texto del corpus sintético.
+fn corpus_paragraphs(name: &str) -> Vec<String> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../tests/corpus/texto")
+        .join(name);
+    let text = std::fs::read_to_string(path).unwrap();
+    nucleo::motor::texto::split_paragraphs(&text)
+        .iter()
+        .map(|p| p.text.to_owned())
+        .collect()
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn a_short_paragraph_uses_the_context_of_its_neighbours() {
+    // Solo, «Refiere un trastorno depresivo…» no da ningún dato de salud.
+    // Con el resto del informe alrededor, sí.
+    let paragraphs = corpus_paragraphs("es-07-valoracion-social.txt");
+    let segments: Vec<&str> = paragraphs.iter().map(String::as_str).collect();
+    let target = segments
+        .iter()
+        .position(|s| s.contains("trastorno depresivo"))
+        .unwrap();
+    let health_in_target = |context| {
+        engine("modelo")
+            .detect_with(&segments, &with_context(context))
+            .unwrap()
+            .into_iter()
+            .filter(|e| e.segment == target && e.kind == "DATOS_SALUD")
+            .map(|e| e.text)
+            .collect::<Vec<_>>()
+    };
+    assert!(health_in_target(ContextMode::Paragraph).is_empty());
+    assert_eq!(
+        health_in_target(ContextMode::Document),
+        ["trastorno depresivo"]
+    );
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn paragraph_context_is_the_same_as_each_segment_alone() {
+    let paragraphs = corpus_paragraphs("es-02-informe-medico.txt");
+    let segments: Vec<&str> = paragraphs.iter().map(String::as_str).collect();
+    let together = engine("modelo")
+        .detect_with(&segments, &with_context(ContextMode::Paragraph))
+        .unwrap();
+    let mut alone = Vec::new();
+    for (i, segment) in segments.iter().enumerate() {
+        for mut e in engine("modelo")
+            .detect_with(&[*segment], &with_context(ContextMode::Paragraph))
+            .unwrap()
+        {
+            e.segment = i;
+            alone.push(e);
+        }
+    }
+    // Los lotes cambian un poco las puntuaciones; las entidades no.
+    let strip = |entities: Vec<Entity>| -> Vec<(usize, usize, usize, String)> {
+        entities
+            .into_iter()
+            .map(|e| (e.segment, e.start, e.end, e.kind))
+            .collect()
+    };
+    assert_eq!(strip(together), strip(alone));
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn document_context_over_several_windows_keeps_each_entity_in_its_segment() {
+    let sentence = "El contrato lo firmó Carlos García Pérez en la notaría de Madrid el pasado martes, ante dos testigos y con toda la documentación en regla.";
+    let segments = vec![sentence; 45];
+    let (entities, timings) = engine("modelo")
+        .detect_timed(&segments, &with_context(ContextMode::Document))
+        .unwrap();
+    assert!(timings.tokens > 1500, "solo {} tokens", timings.tokens);
+    let start = sentence.find("Carlos").unwrap();
+    for segment in 0..segments.len() {
+        let names: Vec<&Entity> = entities
+            .iter()
+            .filter(|e| e.segment == segment && e.kind == "NOMBRE_PERSONA")
+            .collect();
+        assert_eq!(names.len(), 1, "segmento {segment}: {names:?}");
+        assert_eq!(names[0].text, "Carlos García Pérez", "segmento {segment}");
+        assert_eq!(names[0].start, start, "segmento {segment}");
+    }
+    summary(&segments, &entities);
 }

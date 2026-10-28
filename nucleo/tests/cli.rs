@@ -578,3 +578,51 @@ fn entidades_accepts_hilos_and_reports_tokens() {
     assert!(tokens.trim().parse::<usize>().unwrap() > 10, "{timings}");
     assert!(timings.contains("Hilos:            1"), "{timings}");
 }
+
+#[test]
+fn contexto_must_be_documento_or_parrafo() {
+    let (_dir, path) = sample_file();
+    let file = path.to_str().unwrap();
+    for command in ["entidades", "evaluar"] {
+        for args in [
+            vec![command, file, "--contexto"],
+            vec![command, file, "--contexto", "frase"],
+        ] {
+            let output = cli(&args);
+            assert_eq!(output.status.code(), Some(2), "{args:?}");
+            assert!(stderr(&output).contains("Uso:"));
+        }
+    }
+    assert!(stderr(&cli(&[])).contains("--contexto documento|parrafo"));
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn entidades_accepts_both_contexts() {
+    let (_dir, path) = sample_file();
+    for context in ["documento", "parrafo"] {
+        let output = cli(&["entidades", path.to_str().unwrap(), "--contexto", context]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        assert_eq!(
+            parse_entities(&stdout(&output), SAMPLE).len(),
+            4,
+            "{context}"
+        );
+    }
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn evaluar_reports_the_context() {
+    let dir = sample_corpus(SAMPLE_ENTITIES);
+    let output = cli(&[
+        "evaluar",
+        dir.path().to_str().unwrap(),
+        "--contexto",
+        "parrafo",
+    ]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(stdout(&output).contains("Contexto: parrafo"));
+    let output = cli(&["evaluar", dir.path().to_str().unwrap()]);
+    assert!(stdout(&output).contains("Contexto: documento"));
+}
