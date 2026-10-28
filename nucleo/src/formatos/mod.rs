@@ -4,4 +4,5 @@
 
 pub mod docx;
 pub mod pdf;
+pub mod salida;
 pub mod texto;

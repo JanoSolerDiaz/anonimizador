@@ -5,7 +5,6 @@
 //! la escritura falla, no deja archivos a medias ni temporales.
 
 use std::fs;
-use std::io::Write;
 use std::path::Path;
 
 use nucleo::Error;
@@ -44,7 +43,11 @@ fn the_description_comes_from_the_original_name() {
 #[test]
 fn a_name_without_usable_letters_becomes_documento() {
     for original in ["数据.docx", "¡¿!?.txt", "---.md", ""] {
-        assert_eq!(description(Path::new(original)), "documento", "{original:?}");
+        assert_eq!(
+            description(Path::new(original)),
+            "documento",
+            "{original:?}"
+        );
     }
 }
 
@@ -72,11 +75,17 @@ fn free_path_adds_2_3_when_the_name_is_taken() {
 
     fs::write(&first, b"ya estaba").unwrap();
     let second = free_path(dir.path(), "contrato-cliente", Suffix::Anonymized, "docx");
-    assert_eq!(second, dir.path().join("contrato-cliente_anonimizado_2.docx"));
+    assert_eq!(
+        second,
+        dir.path().join("contrato-cliente_anonimizado_2.docx")
+    );
 
     fs::write(&second, b"ya estaba").unwrap();
     let third = free_path(dir.path(), "contrato-cliente", Suffix::Anonymized, "docx");
-    assert_eq!(third, dir.path().join("contrato-cliente_anonimizado_3.docx"));
+    assert_eq!(
+        third,
+        dir.path().join("contrato-cliente_anonimizado_3.docx")
+    );
 
     // Otra extensión no choca.
     let md = free_path(dir.path(), "contrato-cliente", Suffix::Anonymized, "md");
@@ -99,7 +108,10 @@ fn save_new_writes_everything_and_never_overwrites() {
     assert_eq!(path, dir.path().join("nota_anonimizado_2.txt"));
     assert_eq!(fs::read(&path).unwrap(), b"texto anonimizado");
     assert_eq!(fs::read(&existing).unwrap(), b"original");
-    assert_eq!(names(dir.path()), ["nota_anonimizado.txt", "nota_anonimizado_2.txt"]);
+    assert_eq!(
+        names(dir.path()),
+        ["nota_anonimizado.txt", "nota_anonimizado_2.txt"]
+    );
 }
 
 #[test]
