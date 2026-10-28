@@ -53,7 +53,7 @@ cargo run --release -p nucleo --bin cli -- entidades archivo.txt --tiempos
 cargo run --release -p nucleo --bin cli -- evaluar tests/corpus/texto --detalle
 ```
 
-Opciones de las dos órdenes: `--modelo <carpeta>`, `--decodificacion primer|media`, `--umbral <0..1>` y `--hilos <n>`. `entidades` admite además `--no-sustituir CARGO,IMPORTE,LUGAR,COORDENADAS` para dejar sin sustituir los tipos opcionales.
+Opciones de las dos órdenes: `--modelo <carpeta>`, `--decodificacion primer|media`, `--umbral <0..1>`, `--contexto ambos|documento|parrafo` y `--hilos <n>`. Con `ambos`, la opción por defecto, el motor lee el documento párrafo a párrafo y con los párrafos seguidos, y tapa lo que encuentre cualquiera de las dos lecturas. `entidades` admite además `--no-sustituir CARGO,IMPORTE,LUGAR,COORDENADAS` para dejar sin sustituir los tipos opcionales.
 
 El motor emite registros con `tracing` (recuentos por tipo, tokens, ventanas y tiempos). Nunca incluyen texto de los documentos ni valores detectados: lo comprueba `nucleo/tests/logs.rs`.
 

@@ -103,7 +103,7 @@ Un DOCX protegido con contraseña no es un ZIP: es un archivo OLE compuesto, que
 Cada tarea con RED y GREEN en commits, y repaso con fallos provocados al final, como en el hito 2.
 
 ### Task 0: Contexto entre párrafos (se hace primero)
-- **Action**: El motor deja de analizar cada segmento aislado. Los segmentos de una misma llamada a `detect` se encadenan, en orden, en una sola secuencia de tokens, y esa secuencia se trocea en ventanas de 512 con solape de 128, como hasta ahora. Las probabilidades de cada token se devuelven a su segmento y la decodificación sigue siendo por segmento: una entidad nunca cruza de un párrafo a otro y las posiciones siguen siendo relativas al párrafo. La regla de tarjetas sigue aplicándose por segmento. `EngineOptions` gana `context: ContextMode::{Document, Paragraph}` (por defecto `Document`), y `entidades` y `evaluar` ganan `--contexto documento|parrafo` para poder comparar.
+- **Action**: El motor deja de analizar cada segmento aislado. Los segmentos de una misma llamada a `detect` se leen dos veces: cada uno solo, como hasta ahora, y encadenados en orden en una sola secuencia de tokens, troceada en ventanas de 256 con solape de 32. Lo que encuentren las dos lecturas se junta (`fusion::merge_passes`). Las probabilidades de cada token se devuelven a su segmento y la decodificación sigue siendo por segmento: una entidad nunca cruza de un párrafo a otro y las posiciones siguen siendo relativas al párrafo. La regla de tarjetas sigue aplicándose por segmento. `EngineOptions` gana `context: ContextMode::{Combined, Document, Paragraph}` (por defecto `Combined`), y `entidades` y `evaluar` ganan `--contexto ambos|documento|parrafo` para poder comparar. Hecha: Jano eligió la lectura doble y aceptó superar los 5 s del PRD (ver `DECISIONES.md`).
 - **Mirror**: `Engine::detect_timed` y `window_logits` en `nucleo/src/motor/mod.rs`; pruebas de `nucleo/tests/motor.rs`.
 - **Validate**: con el modelo real, un párrafo corto que solo se detecta con el contexto de los vecinos; 40 segmentos que suman más de 1.500 tokens dan cada entidad en su segmento y con sus posiciones; `--contexto parrafo` reproduce el comportamiento anterior. `cli evaluar` con las dos opciones, y el informe de detección actualizado con las cifras reales.
 
@@ -210,7 +210,7 @@ Las tres se resolvieron como se proponía:
 ## Acceptance
 
 - [ ] All tasks complete, cada una con RED y GREEN en commits
-- [ ] El motor analiza los párrafos con el contexto de sus vecinos y el informe de detección recoge la mejora medida
+- [x] El motor analiza los párrafos con el contexto de sus vecinos y el informe de detección recoge la mejora medida
 - [ ] Pruebas automáticas del PRD de este hito en verde: marcadores entre documentos, texto mezclado, DOCX ida y vuelta, XML válido, metadatos vacíos, contraseña, desanonimización tolerante, almacén ilegible en disco y con otra clave, caducidad, escritura interrumpida, conflicto al importar, nombres de salida y logs sin datos
 - [ ] `cli anonimizar` y `cli desanonimizar` funcionan con DOCX, MD, TXT y texto pegado
 - [ ] Jano abre en Word los DOCX anonimizados del corpus y no piden reparación

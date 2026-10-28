@@ -99,3 +99,25 @@ El almacén acepta el plazo de caducidad como parámetro (90 días por defecto).
 ### Más metadatos del DOCX pasan por el motor
 
 El PRD manda vaciar `dc:creator`, `cp:lastModifiedBy` y `Company`. Además, el título, el asunto, las palabras clave y la descripción del documento (`dc:title`, `dc:subject`, `cp:keywords`, `dc:description`) pueden llevar datos personales, así que se pasan por el motor como segmentos y se sustituye lo que detecte.
+
+### El motor lee el documento dos veces y se aceptan más de 5 s para 10 páginas
+
+Cambio del PRD, que analiza cada segmento por separado. El motor hace dos
+lecturas de los segmentos de cada llamada: una párrafo a párrafo y otra con
+los párrafos seguidos, para que cada uno tenga el contexto de sus vecinos. Se
+tapa lo que encuentre cualquiera de las dos; si dos entidades se pisan, se
+juntan en una con el tipo de la más segura. Las entidades no cruzan de un
+segmento a otro y las posiciones siguen siendo relativas al segmento.
+
+En el corpus, la lectura doble tapa el 92 % de los datos (85 % párrafo a
+párrafo, 89 % seguida) y es la única que no deja a la vista ningún nombre,
+documento de identidad, cuenta, tarjeta, correo ni teléfono. La lectura seguida
+usa trozos de 256 tokens con un solape de 32 en lugar de 510 y 128: protege
+igual y tarda alrededor de un 30 % menos. Los datos están en
+`tests/informe-deteccion.md`.
+
+Precio: analizar 10 páginas lleva entre 7 y 9 s con 2 hilos y entre 5 y 6,5 s
+con 4 hilos en el equipo de desarrollo, frente a los 5 s del PRD. Jano decidió
+aceptarlo. Las otras lecturas siguen disponibles en la CLI con
+`--contexto parrafo|documento` para medir. Habrá que confirmar los tiempos en
+un portátil de referencia en el hito 6.

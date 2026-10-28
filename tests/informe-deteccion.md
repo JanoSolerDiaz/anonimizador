@@ -309,3 +309,75 @@ segmentos del PRD, así que no lo he hecho: lo propongo para decidir aparte.
 ## Después de la decisión: la regla de tarjetas
 
 Con la regla, v1 detecta las 6 tarjetas del corpus enteras y con los bordes exactos (antes tapaba 3). En total quedan tapados el 85 % de los datos, frente al 84 %. La regla también marca como tarjeta un IMEI de 15 cifras, porque los IMEI usan el mismo dígito de control. Ese dato ya estaba tapado: solo cambia el marcador.
+
+## Hito 3: el contexto entre párrafos, ya en el motor
+
+El hallazgo anterior se llevó al motor con tres formas de leer, que se eligen
+con `--contexto`:
+
+- `parrafo`: cada párrafo se lee solo, como en el hito 2.
+- `documento`: los párrafos de una llamada se leen seguidos, en trozos de 256
+  tokens que comparten 32 con el siguiente. Las entidades no cruzan de un
+  párrafo a otro.
+- `ambos` (por defecto): las dos lecturas anteriores, y se tapa lo que
+  encuentre cualquiera de las dos. Si dos entidades se pisan, se juntan en una.
+
+### Protección
+
+Corpus de `tests/corpus/texto`. «Apariciones con algo a la vista» cuenta cada
+vez que un dato esperado sale en el texto y queda al menos una letra o cifra
+sin tapar. Los datos que más importan son nombres, documentos de identidad,
+cuentas, tarjetas, correos y teléfonos.
+
+| Forma de leer | Tapadas | Apariciones con algo a la vista | De ellas, de los datos que más importan |
+|---|---|---|---|
+| `parrafo` | 0,85 | 62 de 425 | 0 de 171 |
+| `documento` | 0,89 | 45 de 425 | 3 de 171 |
+| `ambos` | **0,92** | **33 de 425** | **0 de 171** |
+
+Cada lectura falla en sitios distintos. La de párrafos deja a la vista más
+datos en general, pero ninguno de los que más importan. La seguida tapa más
+en conjunto, pero deja a la vista «l'Arnau» y «Mme Marchand» (el modelo no
+separa el apellido de la partícula cuando lee seguido) y la letra final de un
+número de la Seguridad Social británica. Juntas no dejan ninguno.
+
+### Tamaño de los trozos de la lectura seguida
+
+La lectura seguida empezó con los trozos del modelo, 510 tokens con un solape
+de 128. Era la parte cara de `ambos`, así que se probaron otros tamaños
+(cambio temporal, con 2 hilos y el texto de diez páginas):
+
+| Trozo y solape | Tapadas | Apariciones con algo a la vista | Lectura seguida |
+|---|---|---|---|
+| 510 y 128 | 0,91 | 37 | 5,5 s |
+| 384 y 96 | 0,92 | 34 | 5,3 s |
+| 256 y 64 | 0,92 | 34 | 4,8 s |
+| 128 y 32 | 0,91 | 35 | 4,4 s |
+| 510 y 32 | 0,92 | 34 | 4,5 s |
+| **256 y 32** | **0,92** | **33** | **3,9 s** |
+
+Acortar los trozos no resta protección. Lo que más tiempo cuesta no es el
+tamaño del trozo sino el solape, que se lee dos veces: con 510 y 128, una
+cuarta parte del texto. La parte del modelo que crece más deprisa que la
+longitud del trozo (la que compara cada token con todos los demás) pesa poco,
+alrededor de un segundo de los 5,5. Se adoptó 256 y 32.
+
+### Tiempos
+
+Análisis del texto de diez páginas, sin la carga del modelo. Este portátil baja
+de velocidad cuando se calienta tras varios minutos de trabajo, y la misma
+lectura puede variar un 20 % o más de una ejecución a otra. Por eso se dan
+intervalos de varias tandas, y las comparaciones se hacen entre lecturas
+medidas una junto a otra.
+
+| Forma de leer | 2 hilos | 4 hilos |
+|---|---|---|
+| `parrafo` | 2,7 a 4,1 s | 2,4 a 2,6 s |
+| `documento` | 3,9 a 4,7 s | 2,6 a 3,0 s |
+| `ambos` | 7,3 a 9,0 s | 5,1 a 6,6 s |
+
+`ambos` tarda lo que suman las dos lecturas: nunca puede bajar de dos lecturas
+por párrafos. **No cumple el objetivo del PRD de 5 s para diez páginas**, ni con
+4 hilos. Jano decidió (2026-10-28) mantenerlo por defecto y aceptar ese tiempo,
+porque es la forma que no deja a la vista ningún dato de los que más importan.
+Está en `DECISIONES.md`.
