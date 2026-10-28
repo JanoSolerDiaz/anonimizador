@@ -4,6 +4,7 @@
 //! Solo trabaja con texto; no sabe nada de formatos de archivo. Hito 2.
 
 pub mod decodificacion;
+pub mod fusion;
 pub mod inferencia;
 pub mod marcadores;
 pub mod opcionales;
@@ -32,10 +33,13 @@ use crate::{Error, Result};
 /// Qué ve el modelo alrededor de cada segmento.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ContextMode {
+    /// Dos lecturas, una de cada modo de abajo, y se tapa lo que encuentre
+    /// cualquiera de las dos (ver `fusion`). Es lo que más tapa y lo más lento.
+    #[default]
+    Combined,
     /// Los segmentos de una llamada se encadenan en orden y el modelo los lee
     /// seguidos, con el contexto de sus vecinos. Las entidades no cruzan de
     /// un segmento a otro.
-    #[default]
     Document,
     /// Cada segmento se analiza aislado.
     Paragraph,
@@ -156,13 +160,44 @@ impl Engine {
         timings.tokenization = clock.elapsed();
         timings.tokens = tokens.iter().map(Vec::len).sum();
 
+        let (mut entities, windows) = match options.context {
+            ContextMode::Document => self.read(&texts, &tokens, true, options, &mut timings)?,
+            ContextMode::Paragraph => self.read(&texts, &tokens, false, options, &mut timings)?,
+            ContextMode::Combined => {
+                let (paragraph, w1) = self.read(&texts, &tokens, false, options, &mut timings)?;
+                let (document, w2) = self.read(&texts, &tokens, true, options, &mut timings)?;
+                let clock = Instant::now();
+                let merged = fusion::merge_passes(&texts, paragraph, document);
+                timings.decoding += clock.elapsed();
+                (merged, w1 + w2)
+            }
+        };
+        let clock = Instant::now();
+        options.skipped.retain(&mut entities);
+        timings.decoding += clock.elapsed();
+        log_detection(texts.len(), windows, &entities, &timings);
+        Ok((entities, timings))
+    }
+
+    /// Una lectura del modelo. Con `together`, los segmentos van seguidos en
+    /// un solo flujo de tokens; si no, cada uno en el suyo. Suma sus tiempos
+    /// de inferencia y decodificación a `timings` y devuelve las entidades y
+    /// el número de ventanas.
+    fn read(
+        &self,
+        texts: &[&str],
+        tokens: &[Vec<Token>],
+        together: bool,
+        options: &EngineOptions,
+        timings: &mut Timings,
+    ) -> Result<(Vec<Entity>, usize)> {
         // Flujos de tokens que lee el modelo: uno con todos los segmentos
         // seguidos, o uno por segmento. `placement[s]` dice en qué flujo va
         // el segmento `s` y en qué token empieza.
         let mut streams: Vec<Vec<u32>> = Vec::new();
         let mut placement = Vec::with_capacity(tokens.len());
-        for segment_tokens in &tokens {
-            if streams.is_empty() || options.context == ContextMode::Paragraph {
+        for segment_tokens in tokens {
+            if streams.is_empty() || !together {
                 streams.push(Vec::new());
             }
             let stream = streams.len() - 1;
@@ -176,7 +211,7 @@ impl Engine {
             .collect();
         let clock = Instant::now();
         let logits = self.window_logits(&streams, &counts, &windows, options.batch_size)?;
-        timings.inference = clock.elapsed();
+        timings.inference += clock.elapsed();
         let clock = Instant::now();
 
         // Probabilidades de cada token de cada flujo, tomadas de su ventana dueña.
@@ -229,10 +264,8 @@ impl Engine {
             }
             reglas::apply_card_rule(text, segment, &mut entities);
         }
-        options.skipped.retain(&mut entities);
-        timings.decoding = clock.elapsed();
-        log_detection(texts.len(), &windows, &entities, &timings);
-        Ok((entities, timings))
+        timings.decoding += clock.elapsed();
+        Ok((entities, windows.iter().map(Vec::len).sum()))
     }
 
     /// Pasa todas las ventanas por el modelo en lotes y devuelve los logits de
@@ -294,11 +327,11 @@ fn ms(duration: Duration) -> f64 {
 
 /// Registro de una detección: solo recuentos, tipos y tiempos. Nunca texto de
 /// los documentos ni valores detectados (lo comprueba `tests/logs.rs`).
-fn log_detection(segments: usize, windows: &[Vec<Window>], entities: &[Entity], timings: &Timings) {
+fn log_detection(segments: usize, windows: usize, entities: &[Entity], timings: &Timings) {
     tracing::info!(
         segmentos = segments,
         tokens = timings.tokens,
-        ventanas = windows.iter().map(Vec::len).sum::<usize>(),
+        ventanas = windows,
         entidades = entities.len(),
         tokenizacion_ms = ms(timings.tokenization),
         inferencia_ms = ms(timings.inference),
