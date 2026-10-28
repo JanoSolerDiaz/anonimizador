@@ -13,6 +13,10 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Metadata, Subscriber};
 
+use nucleo::motor::troceado::{
+    DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS, OVERLAP_TOKENS,
+    plan_windows,
+};
 use nucleo::motor::{Engine, EngineOptions};
 use nucleo::recursos::Resources;
 
@@ -102,6 +106,37 @@ const SEGMENTS: [&str; 2] = [
     "Contrato firmado por Marta Lozano Ibáñez, con DNI 48291736Q y correo marta.lozano@correo-ejemplo.es.",
     "Pagó con la tarjeta 4532 0151 1283 0366 en Zaragoza por una diabetes.",
 ];
+
+/// Campo numérico del evento de detección.
+fn detection_field(records: &[Captured], field: &str) -> usize {
+    records
+        .iter()
+        .find(|r| r.fields.contains_key("entidades"))
+        .unwrap_or_else(|| panic!("falta el evento de detección: {records:?}"))
+        .fields[field]
+        .parse()
+        .unwrap()
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn the_document_reading_counts_its_own_windows() {
+    // Treinta párrafos cortos: la lectura párrafo a párrafo lee un trozo por
+    // párrafo y la seguida trocea todos juntos con sus propios tamaños.
+    let segments: Vec<String> = (0..30)
+        .map(|i| format!("El expediente {i} sigue abierto y pendiente de revisión por la comisión."))
+        .collect();
+    let refs: Vec<&str> = segments.iter().map(String::as_str).collect();
+    let (records, _) = capture_detection(&refs);
+    let tokens = detection_field(&records, "tokens");
+    let document = plan_windows(tokens, DOCUMENT_WINDOW_TOKENS, DOCUMENT_OVERLAP_TOKENS).len();
+    assert_ne!(
+        document,
+        plan_windows(tokens, MAX_WINDOW_TOKENS, OVERLAP_TOKENS).len(),
+        "la prueba no distingue los tamaños: {tokens} tokens"
+    );
+    assert_eq!(detection_field(&records, "ventanas"), segments.len() + document);
+}
 
 #[test]
 #[ignore = "necesita los modelos descargados en recursos/"]

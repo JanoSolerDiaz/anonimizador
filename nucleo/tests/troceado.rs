@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 
 use nucleo::motor::troceado::{
-    DEFAULT_BATCH_SIZE, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, WindowRef, owners, plan_batches,
+    DEFAULT_BATCH_SIZE, DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS, OVERLAP_TOKENS, Window, WindowRef, owners, plan_batches,
     plan_windows,
 };
 
@@ -25,6 +25,16 @@ fn defaults_match_the_model_limits() {
     assert_eq!(MAX_WINDOW_TOKENS, 510);
     assert_eq!(OVERLAP_TOKENS, 128);
     assert_eq!(DEFAULT_BATCH_SIZE, 8);
+}
+
+#[test]
+fn the_document_reading_uses_shorter_windows_with_less_overlap() {
+    // Medido en el corpus: igual protección y la lectura seguida pasa de
+    // 5,5 s a 3,9 s en diez páginas (ver DECISIONES.md).
+    assert_eq!(DOCUMENT_WINDOW_TOKENS, 256);
+    assert_eq!(DOCUMENT_OVERLAP_TOKENS, 32);
+    let windows = plan_windows(600, DOCUMENT_WINDOW_TOKENS, DOCUMENT_OVERLAP_TOKENS);
+    assert_eq!(ranges(&windows), [(0, 256), (224, 480), (344, 600)]);
 }
 
 #[test]
