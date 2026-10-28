@@ -249,3 +249,17 @@ fn inconsistent_entries_are_invalid() {
         assert!(!format!("{error} {error:?}").contains("juan"), "{error:?}");
     }
 }
+
+#[test]
+fn a_counter_behind_its_markers_is_invalid() {
+    // Con el contador en 41, el siguiente dato recibiría [PERSONA_0042], que
+    // ya es de otro valor: la restauración confundiría dos personas.
+    let mut behind = prd_example();
+    behind["contadores"]["PERSONA"] = json!(41);
+    let mut missing = prd_example();
+    missing["contadores"] = json!({ "EMAIL": 7 });
+    for value in [behind, missing] {
+        let error = load(&value).unwrap_err();
+        assert!(matches!(error, Error::StoreInvalid(_)), "{error:?}");
+    }
+}
