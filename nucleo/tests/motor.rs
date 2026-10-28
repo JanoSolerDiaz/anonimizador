@@ -239,3 +239,26 @@ fn detect_timed_counts_the_text_tokens() {
         assert_eq!(timings.tokens, expected, "{name}");
     }
 }
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn the_card_rule_covers_cards_the_model_only_partly_detects() {
+    // v1 solo marca «5369»; la regla de tarjetas tapa el número entero.
+    let segments = [
+        "Internal note: the customer read out card number 5369 2714 6382 9011, security code 905, over the phone.",
+    ];
+    let entities = engine("modelo").detect(&segments).unwrap();
+    let found = summary(&segments, &entities);
+    assert!(
+        found.contains(&(
+            "5369 2714 6382 9011".to_owned(),
+            "TARJETA_BANCARIA".to_owned()
+        )),
+        "{found:?}"
+    );
+    assert!(
+        !found.iter().any(|(text, _)| text != "5369 2714 6382 9011"
+            && "5369 2714 6382 9011".contains(text.as_str())),
+        "quedan trozos de la tarjeta: {found:?}"
+    );
+}
