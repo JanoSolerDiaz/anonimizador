@@ -111,6 +111,15 @@ Cada tarea con RED y GREEN en commits, y repaso con fallos provocados al final, 
 - **Action**: Añadir los crates de la tabla con las funciones mínimas (`zip` sin funciones por defecto y con `deflate`; `keyring` solo con los backends nativos de Windows y Mac). Leer en docs.rs la API actual de `keyring` 4, `zip` 9, `quick-xml` 0.42 y `aes-gcm` 0.11, y dejar una nota corta en el plan con lo comprobado.
 - **Mirror**: `nucleo/Cargo.toml` (comentarios que explican las funciones desactivadas).
 - **Validate**: `node --test scripts/test/dependencias.test.mjs` sigue en verde (sin red); `cargo tree -p nucleo` sin crates de red.
+- **Hecha (2026-10-28).** Comprobado compilando y ejecutando un ejemplo temporal con cada crate:
+  - `zip` 9: `ZipWriter::new`, `SimpleFileOptions::default().compression_method(CompressionMethod::Deflated)`, `start_file`, `finish`; `ZipArchive::new`, `by_name`. Se usa solo `deflate-flate2-zlib-rs` (sin zopfli).
+  - `quick-xml` 0.42: el texto ya no se «desescapa». Las referencias (`&amp;`, `&#x20;`) llegan como eventos `Event::GeneralRef` aparte, entre dos `Event::Text`; se resuelven con `BytesRef::resolve_char_ref` y `quick_xml::escape::resolve_predefined_entity`. El texto se lee con `BytesText::xml_content(XmlVersion::Implicit1_0)`. Reescribir los mismos eventos con `Writer` da el XML idéntico byte a byte. El extractor del DOCX tiene que juntar los trozos de un `w:t` partidos por referencias.
+  - `aes-gcm` 0.11 usa `hybrid-array`: `Key::<Aes256Gcm>::from([u8; 32])` y `Nonce::from([u8; 12])`; `from_slice` está obsoleto.
+  - `getrandom` 0.4: `getrandom::fill(&mut [u8])`.
+  - `sha2` 0.11: la salida ya no se formatea con `{:x}`; se pasa a hexadecimal byte a byte.
+  - `uuid`: `Uuid::new_v4()`. `jiff`: `Zoned::now()` lee la zona del sistema; `checked_add(Span::new().days(90))`.
+  - `keyring` 4 en modo `v1` (el de por defecto): `keyring::Entry::new(servicio, usuario)` elige solo el almacén del sistema (en Windows funcionó sin configurar nada); `get_secret`, `set_secret`, `delete_credential`; una clave que no existe da `keyring::Error::NoEntry`. Su documentación recomienda `keyring-core` con los almacenes de cada plataforma, pero el modo `v1` sirve y es lo que nombra el PRD. En Mac entra `apple-native-keyring-store` y en Windows `windows-native-keyring-store`; los de Linux no entran.
+  - `cargo tree` para Windows y los dos Mac: ningún crate de red. `dependencias.test.mjs`: 4 de 4.
 
 ### Task 2: Nombres de salida y escritura atómica
 - **Action**: `descripción` a partir del nombre original (minúsculas, sin acentos, espacios a guiones, sin caracteres raros); `descripción_sufijo.ext`; `_2`, `_3` si existe. Escritura en un temporal de la misma carpeta y renombrado; si falla, no queda nada a medias.
