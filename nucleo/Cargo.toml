@@ -41,8 +41,9 @@ getrandom = "0.4.3"
 keyring = "4.2.0"
 sha2 = { version = "0.11.1", default-features = false }
 uuid = { version = "1.29.0", features = ["v4"] }
-# Con las funciones por defecto, para leer la zona horaria del sistema.
-jiff = "0.2.38"
+# Con las funciones por defecto, para leer la zona horaria del sistema, y
+# `serde` para guardar las fechas en el almacén.
+jiff = { version = "0.2.38", features = ["serde"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

@@ -149,7 +149,10 @@ fn json_round_trip_keeps_everything() {
     ] {
         store.assign(kind, "B-X", literal, doc);
     }
-    store.record_document(sample_document("doc-1", &["[NOMBRE_PERSONA_0001]", "[EMAIL_0001]"]));
+    store.record_document(sample_document(
+        "doc-1",
+        &["[NOMBRE_PERSONA_0001]", "[EMAIL_0001]"],
+    ));
     store.record_document(sample_document("doc-2", &["[NOMBRE_PERSONA_0001]"]));
 
     let json = store.to_json();
@@ -157,8 +160,14 @@ fn json_round_trip_keeps_everything() {
     assert_eq!(again.to_json(), json);
     assert_eq!(again.documents(), store.documents());
     // Los índices se reconstruyen al cargar.
-    assert_eq!(again.assign("NOMBRE_PERSONA", "B-X", "ana gil", "doc-3"), "[NOMBRE_PERSONA_0001]");
-    assert_eq!(again.assign("EMAIL", "B-X", "luis@ejemplo.es", "doc-3"), "[EMAIL_0002]");
+    assert_eq!(
+        again.assign("NOMBRE_PERSONA", "B-X", "ana gil", "doc-3"),
+        "[NOMBRE_PERSONA_0001]"
+    );
+    assert_eq!(
+        again.assign("EMAIL", "B-X", "luis@ejemplo.es", "doc-3"),
+        "[EMAIL_0002]"
+    );
 }
 
 #[test]
@@ -188,7 +197,12 @@ fn a_newer_format_version_is_reported_as_such() {
 
 #[test]
 fn malformed_json_is_invalid() {
-    for bytes in [&b""[..], b"{", b"[]", b"{\"formato\": \"anonimizador-almacen\"}"] {
+    for bytes in [
+        &b""[..],
+        b"{",
+        b"[]",
+        b"{\"formato\": \"anonimizador-almacen\"}",
+    ] {
         assert!(
             matches!(Store::from_json(bytes), Err(Error::StoreInvalid(_))),
             "{:?}",

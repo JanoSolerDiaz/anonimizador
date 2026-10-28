@@ -36,7 +36,6 @@ fn format_marker_pads_to_four_digits_but_never_truncates() {
     assert_eq!(format_marker("EMAIL", 10000), "[EMAIL_10000]");
 }
 
-
 // Desde el hito 3, los marcadores los asigna el almacén.
 
 const DOC_A: &str = "documento-a";
@@ -63,7 +62,10 @@ fn each_type_has_its_own_counter() {
         assign(&mut store, "NOMBRE_PERSONA", "Ana Gil"),
         "[NOMBRE_PERSONA_0001]"
     );
-    assert_eq!(assign(&mut store, "EMAIL", "ana@ejemplo.es"), "[EMAIL_0001]");
+    assert_eq!(
+        assign(&mut store, "EMAIL", "ana@ejemplo.es"),
+        "[EMAIL_0001]"
+    );
     assert_eq!(
         assign(&mut store, "NOMBRE_PERSONA", "Luis Mas"),
         "[NOMBRE_PERSONA_0002]"
@@ -147,5 +149,8 @@ fn counters_go_past_9999_without_losing_digits() {
         assign(&mut store, "EMAIL", &format!("usuario{n}@ejemplo.es"));
     }
     assert_eq!(store.counter("EMAIL"), 10_000);
-    assert_eq!(assign(&mut store, "EMAIL", "otro@ejemplo.es"), "[EMAIL_10001]");
+    assert_eq!(
+        assign(&mut store, "EMAIL", "otro@ejemplo.es"),
+        "[EMAIL_10001]"
+    );
 }

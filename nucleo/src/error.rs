@@ -40,6 +40,14 @@ pub enum Error {
     #[error("El corpus de prueba no es válido: {0}.")]
     Corpus(String),
 
+    #[error("El almacén no tiene un formato válido: {0}.")]
+    StoreInvalid(String),
+
+    #[error(
+        "El almacén es de una versión más nueva de la aplicación (formato {0}); actualice la aplicación para abrirlo."
+    )]
+    StoreVersion(u32),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -64,6 +72,8 @@ mod tests {
             Error::UnknownType("SITIO".into()),
             Error::TypeNotOptional("NOMBRE_PERSONA".into()),
             Error::Corpus("detalle".into()),
+            Error::StoreInvalid("detalle".into()),
+            Error::StoreVersion(2),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
