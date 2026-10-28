@@ -67,3 +67,19 @@ Riesgo aceptado: un DNI, IBAN o tarjeta que el modelo no detecte, o que detecte 
 El PRD dice que el mismo valor recibe siempre el mismo marcador. El modelo puede clasificar un mismo texto con tipos distintos en dos sitios (por ejemplo, «Valencia» como lugar y como organización). Si la clave incluyera el tipo, ese texto tendría dos marcadores y la restauración seguiría funcionando, pero el mismo dato aparecería con dos nombres en el documento anonimizado. Por eso la clave es solo el valor normalizado, y el dato conserva el tipo con el que apareció por primera vez.
 
 La normalización quita las marcas diacríticas tras descomponer el texto (NFD). Eso incluye la tilde de la «ñ» y la cedilla de la «ç»: «Muñoz» y «Munoz» comparten marcador.
+
+## Hito 2 · 2026-10-28
+
+### Modelo elegido: v1
+
+Se compararon v1 (`bardsai/eu-pii-anonimization-multilang@62ca571`, el del PRD) y v2 (`bardsai/eu-pii-anonimization-multilang-v2@5e61416`) con el corpus sintético de `tests/corpus/texto`. Los datos están en `tests/informe-deteccion.md`. Jano eligió v1, con la estrategia de palabra «primer subtoken» y umbral 0,5, que son los valores del PRD.
+
+Motivos: v1 deja tapados más datos (84 % frente a 74 %), detecta las categorías especiales del RGPD (v2 no detectó ningún dato de salud), carga en la mitad de tiempo y cumple el objetivo de 5 s para 10 páginas incluso con 2 hilos. v2 se quita de `scripts/recursos.lock.json` y de las pruebas.
+
+La estrategia «media de palabra» se queda en el código como opción de la CLI para futuras mediciones, pero no es la de la aplicación.
+
+### Una regla para tarjetas de pago
+
+Excepción a «Sin reglas deterministas». Con v1, 3 de las 6 tarjetas del corpus quedaban con cifras a la vista. Jano decidió recuperar una sola regla: una secuencia de 13 a 19 cifras, juntas o en grupos separados por un espacio o un guion, que cumpla el algoritmo de Luhn, es una `TARJETA_BANCARIA`. La regla gana al modelo: las entidades del modelo que caen dentro de la tarjeta se quitan, y las que la pisan en parte se recortan. Si una entidad del modelo ya contiene la tarjeta entera, se deja como está, porque la tarjeta ya queda tapada.
+
+El resto de identificadores (DNI, NIE, IBAN) siguen sin regla: en el informe, v1 los tapó todos.

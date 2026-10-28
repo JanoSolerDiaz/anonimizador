@@ -84,6 +84,8 @@ Tipos que el usuario puede elegir (decisión de Jano del 2026-10-26): `CARGO`, `
 
 El PRD pedía reglas fijas para DNI, NIE, IBAN, tarjeta, email y teléfono, que se ejecutaran junto al modelo y ganaran cuando coincidieran con él. Jano decidió no hacerlas. Todo lo detecta el modelo. Por eso desaparecen la antigua Task 4, los tipos `DNI`, `NIE` e `IBAN` de la tabla, el campo `origen` de las entidades (siempre sería «modelo»), la parte de la fusión en la que ganaba la regla y la dependencia `regex`. Está registrado en `DECISIONES.md`.
 
+**Excepción del 2026-10-28**: tras el informe de detección, Jano decidió recuperar una sola regla, la de tarjetas de pago con el algoritmo de Luhn, porque v1 dejaba cifras a la vista en 3 de las 6 tarjetas del corpus. Es la Task 12b.
+
 ## Files to Change
 
 | File | Action | Why |
@@ -161,6 +163,11 @@ Eran las reglas deterministas. Jano decidió no hacerlas (ver «Sin reglas deter
 ### Task 12: Comparación de modelos y tiempos
 - **Action**: Ejecutar la evaluación con v1 y v2, cada uno con las dos estrategias. Medir la carga del modelo, el rendimiento (tokens/s) y el tiempo de un texto de unas 10 páginas frente a los objetivos del PRD (modelo cargado < 3 s; DOCX de 10 páginas < 5 s, usando el texto como aproximación). Escribir `tests/informe-deteccion.md`. **Parar y presentar los datos a Jano para elegir el modelo.** Después, quitar el modelo descartado del lock y registrar la decisión.
 - **Validate**: el informe existe y tiene cifras de las cuatro combinaciones; la decisión está en `DECISIONES.md`.
+- **Hecho (2026-10-28)**: Jano eligió v1 con «primer subtoken» y umbral 0,5. v2 se ha quitado del lock y de las pruebas.
+
+### Task 12b: Regla de tarjetas de pago
+- **Action**: `nucleo/src/motor/reglas.rs` busca secuencias de 13 a 19 cifras, juntas o en grupos separados por un espacio o un guion, sin letras ni cifras pegadas, que cumplan el algoritmo de Luhn. Cada una es una `TARJETA_BANCARIA` con puntuación 1. La regla gana al modelo: se quitan las entidades del modelo contenidas en la tarjeta y se recortan las que la pisan en parte; si una entidad del modelo contiene la tarjeta entera, se deja.
+- **Validate**: pruebas de Luhn, de la búsqueda (separadores, bordes, longitudes, IBAN de 20 cifras) y de la fusión; `cli evaluar` con v1 tapa las 6 tarjetas del corpus.
 
 ### Task 13: Logs sin datos y documentación
 - **Action**: Instrumentar el motor con `tracing` (recuentos y tiempos). Una prueba con un suscriptor que captura eventos comprueba que ningún evento contiene texto de entrada ni valores detectados. Actualizar README y DECISIONES.
@@ -191,7 +198,7 @@ cargo llvm-cov --workspace --summary-only -- --include-ignored   # objetivo ≥ 
 | El `Mutex` serializa la inferencia cuando hay 2 archivos en paralelo | Baja | ONNX Runtime ya reparte cada pasada entre varios núcleos; se mide en el hito 5 |
 | El corpus lo escribo yo y es pequeño, así que puede sesgar la comparación | Media | Mismo corpus para los dos modelos, cuatro idiomas y tipos variados; el informe avisa de que diferencias menores de ~0,02 son ruido |
 | Algunos tipos pueden anonimizar de más y restar utilidad al documento | Media | `CARGO`, `IMPORTE`, `LUGAR` y `COORDENADAS` son opcionales para el usuario. Si el informe de detección muestra el mismo problema con otro tipo (por ejemplo `ORGANIZACION`), se propondrá hacerlo opcional |
-| Sin reglas deterministas, un DNI, IBAN o tarjeta que el modelo no detecte, o detecte solo en parte, queda en el documento anonimizado | Media | El informe de la Task 12 mide la exhaustividad de esos tipos por separado. Si es baja, se presentan los datos a Jano |
+| Sin reglas deterministas, un DNI, IBAN o tarjeta que el modelo no detecte, o detecte solo en parte, queda en el documento anonimizado | Media | Medido en la Task 12: v1 tapa todos los DNI, NIE e IBAN del corpus, pero no las tarjetas. Para las tarjetas se recupera una regla (Task 12b) |
 | `onig` compila código C (en Windows funciona; en Mac está sin probar) | Baja | Mac aplazado; anotarlo para el hito 6 |
 | La forma corta del PDF (`[P42]`) choca entre tipos con la misma inicial (`NOMBRE_PERSONA` y `NOMBRE_PROPIO`, por ejemplo) | — | No es de este hito; se anota para el hito 4 |
 

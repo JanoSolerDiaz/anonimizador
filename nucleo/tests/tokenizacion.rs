@@ -9,7 +9,8 @@ use nucleo::motor::texto::split_words;
 use nucleo::motor::tokenizacion::{TextTokenizer, Token, assign_words};
 use nucleo::recursos::Resources;
 
-const MODELS: [&str; 2] = ["modelo", "modelo-v2"];
+/// Modelos que se prueban. Si se vuelve a comparar otro, se añade aquí.
+const MODELS: [&str; 1] = ["modelo"];
 
 /// Dobles espacios, tabulador, espacio de no separación, salto de línea,
 /// acentos compuestos y descompuestos, ñ, ele geminada catalana, ligadura,
@@ -136,11 +137,9 @@ fn encode_adds_no_special_tokens() {
 #[test]
 #[ignore = "necesita los modelos descargados en recursos/"]
 fn special_tokens_come_from_each_tokenizer() {
-    // v1 usa <s> … </s> (0 y 2); v2 usa <bos> … <eos> (2 y 1).
+    // v1 usa <s> … </s> (0 y 2).
     let v1 = load("modelo");
     assert_eq!((v1.prefix(), v1.suffix()), (&[0][..], &[2][..]));
-    let v2 = load("modelo-v2");
-    assert_eq!((v2.prefix(), v2.suffix()), (&[2][..], &[1][..]));
 }
 
 #[test]

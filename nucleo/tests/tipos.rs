@@ -153,14 +153,13 @@ fn check_model_labels_rejects_labels_without_bio_prefix() {
 
 #[test]
 #[ignore = "necesita los modelos descargados en recursos/"]
-fn the_table_covers_every_label_of_both_models() {
+fn the_table_covers_every_label_of_the_model() {
     let resources = Resources::locate().expect("no se encuentra la carpeta recursos/");
     let table = TypeTable::builtin();
-    for name in ["modelo", "modelo-v2"] {
-        let config = std::fs::read_to_string(resources.model(name).config_path()).unwrap();
-        let labels = labels_from_config(&config).unwrap();
-        table
-            .check_model_labels(&labels)
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
-    }
+    let name = "modelo";
+    let config = std::fs::read_to_string(resources.model(name).config_path()).unwrap();
+    let labels = labels_from_config(&config).unwrap();
+    table
+        .check_model_labels(&labels)
+        .unwrap_or_else(|e| panic!("{name}: {e}"));
 }

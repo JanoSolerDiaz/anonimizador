@@ -1,6 +1,6 @@
 {
   "_comentario": "Versiones fijas de los recursos que no van en git. Los SHA-256 se revisan a mano y no se recalculan nunca de forma automática. Cambiar una versión obliga a actualizar su hash.",
-  "_comentario_modelos": "Durante el hito 2 se comparan dos versiones del modelo. Cuando se elija una, la otra se quitará de esta lista.",
+  "_comentario_modelos": "Modelo elegido en el hito 2 (ver DECISIONES.md, 2026-10-28). Se mantiene la lista por si en el futuro se compara otro.",
   "modelos": [
     {
       "nombre": "v1",
@@ -32,39 +32,6 @@
           "origen": "README.md",
           "nombre": "README.md",
           "sha256": "05155c37ecfec5f0c4327d8dd0d0b6b26c82fd12395bd3e0a504aadd45e96c1f"
-        }
-      ]
-    },
-    {
-      "nombre": "v2",
-      "repositorio": "bardsai/eu-pii-anonimization-multilang-v2",
-      "revision": "5e61416e77675881185767fc0c67759d48b35592",
-      "destino": "recursos/modelo-v2",
-      "archivos": [
-        {
-          "origen": "onnx/model_quantized.onnx",
-          "nombre": "model_quantized.onnx",
-          "sha256": "1ee975af537a3ae507769703c03fc83880cce7e2706bc6d2dc1fd9db861acfa1"
-        },
-        {
-          "origen": "tokenizer.json",
-          "nombre": "tokenizer.json",
-          "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f"
-        },
-        {
-          "origen": "config.json",
-          "nombre": "config.json",
-          "sha256": "94805ed3a9b851a0a5c49d85c4e2dada1fe57d84838cfca8cddfca5aa53acffa"
-        },
-        {
-          "origen": "tokenizer_config.json",
-          "nombre": "tokenizer_config.json",
-          "sha256": "14b147f2a4f939d9b12ab36e9633917040dd948fa78ce283b03402e4cf2c9cba"
-        },
-        {
-          "origen": "README.md",
-          "nombre": "README.md",
-          "sha256": "6697eff9be456dcc16fd2e1bb91ab71a0c29135f4277c3d178326e69ea1fd3ae"
         }
       ]
     }

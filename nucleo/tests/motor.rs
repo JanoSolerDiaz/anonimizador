@@ -11,7 +11,8 @@ use nucleo::motor::tokenizacion::TextTokenizer;
 use nucleo::motor::{Engine, EngineOptions, Entity};
 use nucleo::recursos::Resources;
 
-const MODELS: [&str; 2] = ["modelo", "modelo-v2"];
+/// Modelos que se prueban. Si se vuelve a comparar otro, se añade aquí.
+const MODELS: [&str; 1] = ["modelo"];
 const STRATEGIES: [WordStrategy; 2] = [WordStrategy::FirstSubtoken, WordStrategy::WordMean];
 
 fn resources() -> Resources {
@@ -92,17 +93,6 @@ fn detects_name_document_place_and_phone_with_exact_offsets() {
             .unwrap();
         assert_eq!(summary(&segments, &entities), expected, "v1, {strategy:?}");
     }
-    // v2 reparte más la probabilidad entre sus clases: acierta el tipo, pero
-    // a menudo por debajo de 0,5. Se prueba como recomienda su tarjeta, con la
-    // media de palabra y sin umbral. El umbral definitivo se elige en la Task 12.
-    let mut card = options(WordStrategy::WordMean);
-    card.decode.threshold = 0.0;
-    let entities = engine("modelo-v2").detect_with(&segments, &card).unwrap();
-    assert_eq!(
-        summary(&segments, &entities),
-        expected,
-        "v2 como en su tarjeta"
-    );
 }
 
 #[test]

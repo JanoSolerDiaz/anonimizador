@@ -119,10 +119,10 @@ fn check_files_rejects_a_directory_in_place_of_a_file() {
 #[test]
 fn a_named_model_lives_in_its_own_folder_under_the_root() {
     let resources = Resources::new("raiz");
-    let model = resources.model("modelo-v2");
+    let model = resources.model("otro-modelo");
 
-    assert_eq!(model.name(), "modelo-v2");
-    assert_eq!(model.dir(), Path::new("raiz").join("modelo-v2"));
+    assert_eq!(model.name(), "otro-modelo");
+    assert_eq!(model.dir(), Path::new("raiz").join("otro-modelo"));
     assert_eq!(model.onnx_path(), model.dir().join("model_quantized.onnx"));
     assert_eq!(model.tokenizer_path(), model.dir().join("tokenizer.json"));
     assert_eq!(model.config_path(), model.dir().join("config.json"));
@@ -142,7 +142,7 @@ fn the_default_model_is_the_modelo_folder() {
 #[test]
 fn model_check_files_reports_each_missing_model_file() {
     let dir = tempfile::tempdir().unwrap();
-    let model = Resources::new(dir.path()).model("modelo-v2");
+    let model = Resources::new(dir.path()).model("otro-modelo");
     fs::create_dir_all(model.dir()).unwrap();
     for name in MODEL_FILES {
         fs::write(model.dir().join(name), b"").unwrap();

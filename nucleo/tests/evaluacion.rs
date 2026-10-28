@@ -391,33 +391,32 @@ fn the_long_text_puts_entities_where_two_windows_overlap() {
     let corpus = load_corpus(&corpus_dir()).unwrap();
     let long = corpus.iter().find(|t| t.name.contains("largo")).unwrap();
     let resources = Resources::locate().expect("no se encuentra la carpeta recursos/");
-    for model in ["modelo", "modelo-v2"] {
-        let tokenizer = TextTokenizer::load(&resources.model(model).tokenizer_path()).unwrap();
-        let tokens = tokenizer.encode(long.text.trim_end()).unwrap();
-        let windows = plan_windows(tokens.len(), MAX_WINDOW_TOKENS, OVERLAP_TOKENS);
-        assert!(
-            windows.len() >= 3,
-            "{model}: solo {} ventanas",
-            windows.len()
-        );
-        let in_overlap = long
-            .expected
-            .iter()
-            .filter(|e| {
-                // Tokens de la entidad, y cuántas ventanas los contienen todos.
-                let inside: Vec<usize> = (0..tokens.len())
-                    .filter(|&i| tokens[i].start < e.end && tokens[i].end > e.start)
-                    .collect();
-                windows
-                    .iter()
-                    .filter(|w| inside.iter().all(|&i| w.start <= i && i < w.end))
-                    .count()
-                    >= 2
-            })
-            .count();
-        assert!(
-            in_overlap >= 3,
-            "{model}: solo {in_overlap} entidades en solapes"
-        );
-    }
+    let model = "modelo";
+    let tokenizer = TextTokenizer::load(&resources.model(model).tokenizer_path()).unwrap();
+    let tokens = tokenizer.encode(long.text.trim_end()).unwrap();
+    let windows = plan_windows(tokens.len(), MAX_WINDOW_TOKENS, OVERLAP_TOKENS);
+    assert!(
+        windows.len() >= 3,
+        "{model}: solo {} ventanas",
+        windows.len()
+    );
+    let in_overlap = long
+        .expected
+        .iter()
+        .filter(|e| {
+            // Tokens de la entidad, y cuántas ventanas los contienen todos.
+            let inside: Vec<usize> = (0..tokens.len())
+                .filter(|&i| tokens[i].start < e.end && tokens[i].end > e.start)
+                .collect();
+            windows
+                .iter()
+                .filter(|w| inside.iter().all(|&i| w.start <= i && i < w.end))
+                .count()
+                >= 2
+        })
+        .count();
+    assert!(
+        in_overlap >= 3,
+        "{model}: solo {in_overlap} entidades en solapes"
+    );
 }

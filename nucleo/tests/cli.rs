@@ -68,12 +68,12 @@ fn check_resources_looks_in_the_folder_of_the_requested_model() {
         "comprobar-recursos",
         dir.path().to_str().unwrap(),
         "--modelo",
-        "modelo-v2",
+        "otro-modelo",
     ]);
 
     assert_eq!(output.status.code(), Some(1));
     let message = stderr(&output);
-    let expected = dir.path().join("modelo-v2").join("model_quantized.onnx");
+    let expected = dir.path().join("otro-modelo").join("model_quantized.onnx");
     assert!(
         message.contains(&expected.display().to_string()),
         "{message}"
@@ -107,22 +107,6 @@ fn check_resources_with_real_resources_succeeds() {
     let text = stdout(&output);
     assert!(text.contains("Modelo «modelo» cargado."), "{text}");
     assert!(text.contains("PDFium cargado."));
-}
-
-#[test]
-#[ignore = "necesita los dos modelos descargados en recursos/"]
-fn check_resources_loads_several_models() {
-    let output = cli(&[
-        "comprobar-recursos",
-        "--modelo",
-        "modelo",
-        "--modelo",
-        "modelo-v2",
-    ]);
-    assert!(output.status.success(), "{}", stderr(&output));
-    let text = stdout(&output);
-    assert!(text.contains("Modelo «modelo» cargado."), "{text}");
-    assert!(text.contains("Modelo «modelo-v2» cargado."), "{text}");
 }
 
 // ---------------------------------------------------------------- entidades
@@ -280,14 +264,13 @@ fn entidades_accepts_model_strategy_and_threshold() {
         "entidades",
         path.to_str().unwrap(),
         "--modelo",
-        "modelo-v2",
+        "modelo",
         "--decodificacion",
         "media",
         "--umbral",
         "0",
     ]);
     assert!(output.status.success(), "{}", stderr(&output));
-    // Con la estrategia de primer subtoken, v2 clasifica el DNI como referencia.
     assert_eq!(
         parse_entities(&stdout(&output), SAMPLE),
         triples(&[
@@ -332,17 +315,16 @@ fn entidades_on_a_file_without_data_prints_an_empty_list() {
 #[test]
 #[ignore = "necesita los modelos descargados en recursos/"]
 fn entidades_passes_the_strategy_to_the_engine() {
-    // Con este párrafo, v2 solo ve la fecha «1985» con la media de palabra.
+    // Con la media de palabra, los trozos de «ejemplo-empresa» llevan el
+    // enlace hacia ORGANIZACION; con el primer subtoken sale como ENLACE.
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("medico.txt");
-    let text = "El Dr. Josep Maria Fàbregas atendió a Núria Soler el 3 de marzo de 1985 por diabetes tipo 2.\n";
+    let path = dir.path().join("enlace.txt");
+    let text = "Ha intentado restablecer la contraseña desde https://intranet.ejemplo-empresa.es/perfil/pmartin sin éxito. Escribid a pablo.martin.c@correo-ejemplo.com hoy.\n";
     std::fs::write(&path, text).unwrap();
     let kinds = |strategy: &str| -> Vec<String> {
         let output = cli(&[
             "entidades",
             path.to_str().unwrap(),
-            "--modelo",
-            "modelo-v2",
             "--decodificacion",
             strategy,
             "--umbral",
@@ -354,8 +336,8 @@ fn entidades_passes_the_strategy_to_the_engine() {
             .map(|(_, _, kind)| kind)
             .collect()
     };
-    assert!(!kinds("primer").contains(&"FECHA_NACIMIENTO".to_owned()));
-    assert!(kinds("media").contains(&"FECHA_NACIMIENTO".to_owned()));
+    assert!(kinds("primer").contains(&"ENLACE".to_owned()));
+    assert!(!kinds("media").contains(&"ENLACE".to_owned()));
 }
 
 // ---------------------------------------------------------------- evaluar
@@ -539,7 +521,7 @@ fn evaluar_passes_model_strategy_and_threshold() {
         "evaluar",
         folder,
         "--modelo",
-        "modelo-v2",
+        "modelo",
         "--decodificacion",
         "media",
         "--umbral",
@@ -547,7 +529,7 @@ fn evaluar_passes_model_strategy_and_threshold() {
     ]);
     assert!(output.status.success(), "{}", stderr(&output));
     let report = stdout(&output);
-    assert!(report.contains("Modelo: modelo-v2"), "{report}");
+    assert!(report.contains("Modelo: modelo"), "{report}");
     assert!(report.contains("Decodificación: media"), "{report}");
     assert!(report.contains("Umbral: 0,00"), "{report}");
     assert_eq!(row(&report, "TOTAL")[1..4], ["4", "4", "4"]);

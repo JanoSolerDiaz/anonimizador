@@ -51,10 +51,7 @@ fn the_lock_lists_v1_and_v2_in_their_own_folders() {
             )
         })
         .collect();
-    assert_eq!(
-        found,
-        [("v1", "recursos/modelo"), ("v2", "recursos/modelo-v2")]
-    );
+    assert_eq!(found, [("v1", "recursos/modelo")]);
 }
 
 #[test]

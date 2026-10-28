@@ -7,7 +7,8 @@
 use nucleo::recursos::Resources;
 
 /// Carpetas de los modelos que se comparan en el hito 2 (v1 y v2).
-const MODELS: [&str; 2] = ["modelo", "modelo-v2"];
+/// Modelos que se prueban. Si se vuelve a comparar otro, se añade aquí.
+const MODELS: [&str; 1] = ["modelo"];
 
 #[test]
 #[ignore = "necesita `node scripts/descargar-modelo.mjs` y `node scripts/descargar-binarios.mjs`"]

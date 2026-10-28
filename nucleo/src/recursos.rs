@@ -49,7 +49,7 @@ pub struct Resources {
 }
 
 /// Rutas a los archivos de un modelo, que vive en su propia carpeta dentro de
-/// los recursos (`recursos/modelo`, `recursos/modelo-v2`…). El motor no sabe
+/// los recursos (`recursos/modelo`…). El motor no sabe
 /// qué modelo es: solo lee estos archivos.
 #[derive(Debug, Clone)]
 pub struct ModelPaths {

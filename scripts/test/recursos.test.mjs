@@ -218,14 +218,11 @@ describe("paqueteAlDia", () => {
   });
 });
 
-test("leerLock devuelve los dos modelos y los binarios", async () => {
+test("leerLock devuelve el modelo elegido y los binarios", async () => {
   const lock = await leerLock();
   assert.deepEqual(
     lock.modelos.map((m) => [m.nombre, m.repositorio]),
-    [
-      ["v1", "bardsai/eu-pii-anonimization-multilang"],
-      ["v2", "bardsai/eu-pii-anonimization-multilang-v2"],
-    ],
+    [["v1", "bardsai/eu-pii-anonimization-multilang"]],
   );
   assert.deepEqual(
     lock.binarios.map((b) => b.nombre),
