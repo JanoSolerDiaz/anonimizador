@@ -317,8 +317,15 @@ fn a_short_paragraph_uses_the_context_of_its_neighbours() {
 fn paragraph_context_is_the_same_as_each_segment_alone() {
     let paragraphs = corpus_paragraphs("es-02-informe-medico.txt");
     let segments: Vec<&str> = paragraphs.iter().map(String::as_str).collect();
+    // En lotes de uno, para que cada segmento vaya solo en su pasada como
+    // cuando se analiza aparte: la cuantización INT8 mueve un poco las
+    // puntuaciones según qué textos comparten lote.
+    let one_by_one = EngineOptions {
+        batch_size: 1,
+        ..with_context(ContextMode::Paragraph)
+    };
     let together = engine("modelo")
-        .detect_with(&segments, &with_context(ContextMode::Paragraph))
+        .detect_with(&segments, &one_by_one)
         .unwrap();
     let mut alone = Vec::new();
     for (i, segment) in segments.iter().enumerate() {
@@ -330,7 +337,6 @@ fn paragraph_context_is_the_same_as_each_segment_alone() {
             alone.push(e);
         }
     }
-    // Los lotes cambian un poco las puntuaciones; las entidades no.
     let strip = |entities: Vec<Entity>| -> Vec<(usize, usize, usize, String)> {
         entities
             .into_iter()
@@ -344,12 +350,13 @@ fn paragraph_context_is_the_same_as_each_segment_alone() {
 #[ignore = "necesita los modelos descargados en recursos/"]
 fn document_context_over_several_windows_keeps_each_entity_in_its_segment() {
     let sentence = "El contrato lo firmó Carlos García Pérez en la notaría de Madrid el pasado martes, ante dos testigos y con toda la documentación en regla.";
-    let segments = vec![sentence; 45];
+    let segments = vec![sentence; 55];
     let (entities, timings) = engine("modelo")
         .detect_timed(&segments, &with_context(ContextMode::Document))
         .unwrap();
     assert!(timings.tokens > 1500, "solo {} tokens", timings.tokens);
-    let start = sentence.find("Carlos").unwrap();
+    // Posición en caracteres: «firmó» lleva una letra de dos bytes.
+    let start = sentence[..sentence.find("Carlos").unwrap()].chars().count();
     for segment in 0..segments.len() {
         let names: Vec<&Entity> = entities
             .iter()

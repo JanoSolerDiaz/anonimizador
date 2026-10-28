@@ -14,7 +14,7 @@ use nucleo::evaluacion::{Evaluation, Span, load_corpus};
 use nucleo::motor::decodificacion::WordStrategy;
 use nucleo::motor::opcionales::SkippedTypes;
 use nucleo::motor::texto::split_paragraphs;
-use nucleo::motor::{Engine, EngineOptions, Timings};
+use nucleo::motor::{ContextMode, Engine, EngineOptions, Timings};
 use nucleo::recursos::{DEFAULT_MODEL, Resources};
 
 const USAGE: &str = "Uso:
@@ -25,10 +25,11 @@ const USAGE: &str = "Uso:
       --decodificacion primer|media  estrategia de palabra (por defecto: primer)
       --umbral <0..1>                puntuación mínima de una entidad (por defecto: 0,5)
       --hilos <n>                    hilos de cada pasada del modelo (por defecto: la mitad de los núcleos)
+      --contexto documento|parrafo   el modelo lee los párrafos seguidos o cada uno aislado (por defecto: documento)
       --no-sustituir <T1,T2>         tipos opcionales que no se sustituyen
       --tiempos                      tiempo de cada fase en la salida de error
   cli evaluar <carpeta> [opciones]
-      --modelo, --decodificacion, --umbral y --hilos como en entidades
+      --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
       --detalle                      lista las entidades no detectadas y las de más";
 
 fn main() -> ExitCode {
@@ -161,6 +162,13 @@ fn parse_engine_option<'a>(
                 .and_then(|v| v.parse::<f32>().ok())
                 .filter(|t| (0.0..=1.0).contains(t))
                 .ok_or(ArgsError::Usage)?
+        }
+        "--contexto" => {
+            options.context = match args.next() {
+                Some("documento") => ContextMode::Document,
+                Some("parrafo") => ContextMode::Paragraph,
+                _ => return Err(ArgsError::Usage),
+            }
         }
         "--hilos" => {
             options.threads = args
@@ -427,6 +435,13 @@ fn evaluate_corpus(args: EvaluateArgs) -> ExitCode {
     let totals = evaluation.total();
     println!("Modelo: {}", args.model);
     println!("Decodificación: {strategy}");
+    println!(
+        "Contexto: {}",
+        match args.options.context {
+            ContextMode::Document => "documento",
+            ContextMode::Paragraph => "parrafo",
+        }
+    );
     println!(
         "Umbral: {}",
         decimal(Some(f64::from(args.options.decode.threshold)))

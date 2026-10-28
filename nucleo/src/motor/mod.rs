@@ -29,6 +29,18 @@ use std::time::{Duration, Instant};
 use crate::recursos::{ModelPaths, Resources};
 use crate::{Error, Result};
 
+/// Qué ve el modelo alrededor de cada segmento.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ContextMode {
+    /// Los segmentos de una llamada se encadenan en orden y el modelo los lee
+    /// seguidos, con el contexto de sus vecinos. Las entidades no cruzan de
+    /// un segmento a otro.
+    #[default]
+    Document,
+    /// Cada segmento se analiza aislado.
+    Paragraph,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct EngineOptions {
     pub decode: DecodeOptions,
@@ -38,6 +50,7 @@ pub struct EngineOptions {
     pub threads: usize,
     /// Tipos opcionales que el usuario ha decidido no sustituir.
     pub skipped: SkippedTypes,
+    pub context: ContextMode,
 }
 
 impl Default for EngineOptions {
@@ -48,6 +61,7 @@ impl Default for EngineOptions {
             batch_size: DEFAULT_BATCH_SIZE,
             threads: (cores / 2).max(1),
             skipped: SkippedTypes::default(),
+            context: ContextMode::default(),
         }
     }
 }
@@ -140,39 +154,63 @@ impl Engine {
             .map(|text| self.tokenizer.encode(text))
             .collect::<Result<Vec<Vec<Token>>>>()?;
         timings.tokenization = clock.elapsed();
-        let counts: Vec<usize> = tokens.iter().map(Vec::len).collect();
-        timings.tokens = counts.iter().sum();
+        timings.tokens = tokens.iter().map(Vec::len).sum();
+
+        // Flujos de tokens que lee el modelo: uno con todos los segmentos
+        // seguidos, o uno por segmento. `placement[s]` dice en qué flujo va
+        // el segmento `s` y en qué token empieza.
+        let mut streams: Vec<Vec<u32>> = Vec::new();
+        let mut placement = Vec::with_capacity(tokens.len());
+        for segment_tokens in &tokens {
+            if streams.is_empty() || options.context == ContextMode::Paragraph {
+                streams.push(Vec::new());
+            }
+            let stream = streams.len() - 1;
+            placement.push((stream, streams[stream].len()));
+            streams[stream].extend(segment_tokens.iter().map(|t| t.id));
+        }
+        let counts: Vec<usize> = streams.iter().map(Vec::len).collect();
         let windows: Vec<Vec<Window>> = counts
             .iter()
             .map(|&n| plan_windows(n, MAX_WINDOW_TOKENS, OVERLAP_TOKENS))
             .collect();
         let clock = Instant::now();
-        let logits = self.window_logits(&tokens, &counts, &windows, options.batch_size)?;
+        let logits = self.window_logits(&streams, &counts, &windows, options.batch_size)?;
         timings.inference = clock.elapsed();
         let clock = Instant::now();
 
+        // Probabilidades de cada token de cada flujo, tomadas de su ventana dueña.
         let width = self.labels.len();
+        let probs: Vec<Vec<f32>> = (0..streams.len())
+            .map(|stream| {
+                let n = counts[stream];
+                let mut probs = Vec::with_capacity(n * width);
+                for (token, &owner) in owners(&windows[stream], n).iter().enumerate() {
+                    let local = token - windows[stream][owner].start;
+                    probs.extend_from_slice(
+                        &logits[stream][owner][local * width..(local + 1) * width],
+                    );
+                }
+                softmax_rows(&mut probs, width);
+                probs
+            })
+            .collect();
+
+        // La decodificación es por segmento: una entidad no cruza de uno a otro.
         let table = TypeTable::builtin();
         let mut entities = Vec::new();
         for (segment, text) in texts.iter().enumerate() {
-            let n = counts[segment];
+            let n = tokens[segment].len();
             if n == 0 {
                 continue;
             }
-            // Cada token toma los logits de su ventana dueña.
-            let mut probs = Vec::with_capacity(n * width);
-            for (token, &owner) in owners(&windows[segment], n).iter().enumerate() {
-                let local = token - windows[segment][owner].start;
-                probs
-                    .extend_from_slice(&logits[segment][owner][local * width..(local + 1) * width]);
-            }
-            softmax_rows(&mut probs, width);
-
+            let (stream, first) = placement[segment];
+            let segment_probs = &probs[stream][first * width..(first + n) * width];
             let chars: Vec<char> = text.chars().collect();
             for d in decode(
                 text,
                 &tokens[segment],
-                &probs,
+                segment_probs,
                 &self.labels,
                 &options.decode,
             ) {
@@ -198,10 +236,10 @@ impl Engine {
     }
 
     /// Pasa todas las ventanas por el modelo en lotes y devuelve los logits de
-    /// los tokens de texto de cada una, por segmento y ventana.
+    /// los tokens de texto de cada una, por flujo y ventana.
     fn window_logits(
         &self,
-        tokens: &[Vec<Token>],
+        tokens: &[Vec<u32>],
         counts: &[usize],
         windows: &[Vec<Window>],
         batch_size: usize,
@@ -218,7 +256,7 @@ impl Engine {
                 .map(|r| {
                     let text_ids = tokens[r.segment][r.window.start..r.window.end]
                         .iter()
-                        .map(|t| t.id);
+                        .copied();
                     prefix
                         .iter()
                         .copied()
