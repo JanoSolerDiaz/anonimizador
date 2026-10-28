@@ -124,7 +124,7 @@ pub fn softmax_rows(values: &mut [f32], width: usize) {
 /// No incluye los que pueden ser parte del dato, como `+`, `@`, `#`, `_` o `€`.
 const EDGE_PUNCTUATION: &str = ".,;:!?¿¡\"'«»“”‘’„()[]{}<>…–—-*/\\|";
 
-fn is_edge_noise(c: char) -> bool {
+pub(crate) fn is_edge_noise(c: char) -> bool {
     c.is_whitespace() || EDGE_PUNCTUATION.contains(c)
 }
 

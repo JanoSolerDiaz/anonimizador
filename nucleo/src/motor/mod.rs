@@ -1,5 +1,5 @@
 //! Motor de anonimización: tokenización, inferencia ONNX, troceado,
-//! decodificación BIO, tipos opcionales y marcadores.
+//! decodificación BIO, regla de tarjetas, tipos opcionales y marcadores.
 //!
 //! Solo trabaja con texto; no sabe nada de formatos de archivo. Hito 2.
 
@@ -7,6 +7,7 @@ pub mod decodificacion;
 pub mod inferencia;
 pub mod marcadores;
 pub mod opcionales;
+pub mod reglas;
 pub mod texto;
 pub mod tipos;
 pub mod tokenizacion;
@@ -180,6 +181,7 @@ impl Engine {
                     score: d.score,
                 });
             }
+            reglas::apply_card_rule(text, segment, &mut entities);
         }
         options.skipped.retain(&mut entities);
         timings.decoding = clock.elapsed();
