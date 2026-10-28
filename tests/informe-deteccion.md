@@ -304,4 +304,8 @@ segmentos del PRD, así que no lo he hecho: lo propongo para decidir aparte.
 - Su punto débil son las tarjetas (3 de 6 con cifras a la vista). Hay que
   decidir qué hacer con eso (ver «Riesgo que hay que decidir»).
 
-**Decisión de Jano**: pendiente.
+**Decisión de Jano (2026-10-28)**: v1 con «primer» y umbral 0,5, y la opción 2 para las tarjetas: se recupera la regla de tarjetas con Luhn. Está en `DECISIONES.md`.
+
+## Después de la decisión: la regla de tarjetas
+
+Con la regla, v1 detecta las 6 tarjetas del corpus enteras y con los bordes exactos (antes tapaba 3). En total quedan tapados el 85 % de los datos, frente al 84 %. La regla también marca como tarjeta un IMEI de 15 cifras, porque los IMEI usan el mismo dígito de control. Ese dato ya estaba tapado: solo cambia el marcador.
