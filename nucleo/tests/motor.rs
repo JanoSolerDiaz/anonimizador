@@ -70,7 +70,7 @@ fn default_options() {
     assert_eq!(options.threads, (cores / 2).max(1));
     assert_eq!(options.decode.strategy, WordStrategy::FirstSubtoken);
     assert_eq!(options.decode.threshold, 0.5);
-    assert_eq!(options.context, ContextMode::Document);
+    assert_eq!(options.context, ContextMode::Combined);
 }
 
 #[test]
@@ -367,4 +367,44 @@ fn document_context_over_several_windows_keeps_each_entity_in_its_segment() {
         assert_eq!(names[0].start, start, "segmento {segment}");
     }
     summary(&segments, &entities);
+}
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn combined_context_covers_what_either_reading_finds() {
+    // «trastorno depresivo» solo lo tapa la lectura seguida; «Marchand», en
+    // «Mme Marchand», solo la lectura párrafo a párrafo.
+    // `covered(archivo, párrafo, palabra, modo)`: la palabra del párrafo que
+    // contiene `párrafo` queda tapada entera.
+    let covered = |file: &str, paragraph: &str, word: &str, context: ContextMode| -> bool {
+        let paragraphs = corpus_paragraphs(file);
+        let segments: Vec<&str> = paragraphs.iter().map(String::as_str).collect();
+        let target = segments.iter().position(|s| s.contains(paragraph)).unwrap();
+        let text = segments[target];
+        let start = text[..text.find(word).unwrap()].chars().count();
+        let end = start + word.chars().count();
+        let entities = engine("modelo")
+            .detect_with(&segments, &with_context(context))
+            .unwrap();
+        (start..end).all(|i| {
+            entities
+                .iter()
+                .any(|e| e.segment == target && e.start <= i && i < e.end)
+        })
+    };
+    let health = (
+        "es-07-valoracion-social.txt",
+        "trastorno depresivo",
+        "depresivo",
+    );
+    let name = ("fr-02-compte-rendu.txt", "Mme Marchand", "Marchand");
+    assert!(!covered(
+        health.0,
+        health.1,
+        health.2,
+        ContextMode::Paragraph
+    ));
+    assert!(!covered(name.0, name.1, name.2, ContextMode::Document));
+    assert!(covered(health.0, health.1, health.2, ContextMode::Combined));
+    assert!(covered(name.0, name.1, name.2, ContextMode::Combined));
 }

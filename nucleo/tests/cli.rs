@@ -593,14 +593,14 @@ fn contexto_must_be_documento_or_parrafo() {
             assert!(stderr(&output).contains("Uso:"));
         }
     }
-    assert!(stderr(&cli(&[])).contains("--contexto documento|parrafo"));
+    assert!(stderr(&cli(&[])).contains("--contexto ambos|documento|parrafo"));
 }
 
 #[test]
 #[ignore = "necesita los modelos descargados en recursos/"]
 fn entidades_accepts_both_contexts() {
     let (_dir, path) = sample_file();
-    for context in ["documento", "parrafo"] {
+    for context in ["ambos", "documento", "parrafo"] {
         let output = cli(&["entidades", path.to_str().unwrap(), "--contexto", context]);
         assert!(output.status.success(), "{}", stderr(&output));
         assert_eq!(
@@ -624,5 +624,5 @@ fn evaluar_reports_the_context() {
     assert!(output.status.success(), "{}", stderr(&output));
     assert!(stdout(&output).contains("Contexto: parrafo"));
     let output = cli(&["evaluar", dir.path().to_str().unwrap()]);
-    assert!(stdout(&output).contains("Contexto: documento"));
+    assert!(stdout(&output).contains("Contexto: ambos"));
 }
