@@ -245,3 +245,25 @@ fn without_cards_nothing_changes() {
     apply_card_rule(text, 0, &mut entities);
     assert_eq!(entities, before);
 }
+
+#[test]
+fn the_length_limits_are_13_and_19_digits() {
+    assert!(luhn_valid("4532015112830366120"));
+    assert!(luhn_valid("45320151128303661230"));
+    assert_eq!(cards("de 19: 4532015112830366120"), ["4532015112830366120"]);
+    assert!(cards("de 20: 45320151128303661230").is_empty());
+}
+
+#[test]
+fn an_entity_of_another_segment_at_the_same_positions_is_not_touched() {
+    let other = "Texto de otro párrafo bastante más largo";
+    let mut entities = vec![entity(1, 9, 13, "LUGAR", other)];
+    apply_card_rule(TEXT, 0, &mut entities);
+    assert_eq!(
+        summary(&entities),
+        [
+            s(0, "5369 2714 6382 9011", "TARJETA_BANCARIA"),
+            s(1, "otro", "LUGAR"),
+        ]
+    );
+}
