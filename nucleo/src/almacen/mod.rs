@@ -204,6 +204,13 @@ impl Store {
                     "dos entradas tienen el mismo marcador".into(),
                 ));
             }
+            if let Some(number) = marker_number(&entry.marker, &entry.kind)
+                && store.counter(&entry.kind) < number
+            {
+                return Err(Error::StoreInvalid(
+                    "un contador va por detrás de sus marcadores".into(),
+                ));
+            }
         }
         Ok(store)
     }
@@ -290,6 +297,18 @@ impl Store {
     pub fn documents(&self) -> &[DocumentRecord] {
         &self.documents
     }
+}
+
+/// Número de un marcador `[TIPO_0042]` del tipo `kind`, o `None` si no tiene
+/// esa forma.
+fn marker_number(marker: &str, kind: &str) -> Option<u32> {
+    marker
+        .strip_prefix('[')?
+        .strip_prefix(kind)?
+        .strip_prefix('_')?
+        .strip_suffix(']')?
+        .parse()
+        .ok()
 }
 
 /// Error de lectura del JSON sin el texto de serde_json, que puede citar
