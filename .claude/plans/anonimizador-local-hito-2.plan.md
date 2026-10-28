@@ -172,6 +172,7 @@ Eran las reglas deterministas. Jano decidió no hacerlas (ver «Sin reglas deter
 ### Task 13: Logs sin datos y documentación
 - **Action**: Instrumentar el motor con `tracing` (recuentos y tiempos). Una prueba con un suscriptor que captura eventos comprueba que ningún evento contiene texto de entrada ni valores detectados. Actualizar README y DECISIONES.
 - **Validate**: `cargo test -p nucleo logs`; validación completa.
+- **Hecho (2026-10-28)**: eventos de carga, de detección y por tipo. `nucleo/tests/logs.rs` captura los eventos con un suscriptor propio y comprueba los recuentos y que ningún valor contiene texto de entrada. Cobertura de `nucleo::motor`: 97 % de líneas.
 
 ## Validation
 
@@ -209,11 +210,11 @@ cargo llvm-cov --workspace --summary-only -- --include-ignored   # objetivo ≥ 
 
 ## Acceptance
 
-- [ ] All tasks complete, cada una con RED y GREEN en commits
-- [ ] Pruebas automáticas del PRD de este hito en verde: troceado, marcadores y marcadores entre documentos (las de reglas se retiran por decisión de Jano)
-- [ ] `cli entidades archivo.txt` imprime las entidades en JSON
-- [ ] Informe de detección con v1 y v2, tiempos medidos frente a objetivos y modelo elegido por Jano
-- [ ] Sin crates con acceso a red (la prueba de dependencias sigue en verde)
-- [ ] Ningún log con texto de documentos
-- [ ] Cobertura ≥ 80 % en `nucleo::motor`
-- [ ] Patterns mirrored, not reinvented
+- [x] All tasks complete, cada una con RED y GREEN en commits
+- [x] Pruebas automáticas del PRD de este hito en verde: troceado, marcadores y marcadores entre documentos (las de reglas se retiran por decisión de Jano)
+- [x] `cli entidades archivo.txt` imprime las entidades en JSON
+- [x] Informe de detección con v1 y v2, tiempos medidos frente a objetivos y modelo elegido por Jano
+- [x] Sin crates con acceso a red (la prueba de dependencias sigue en verde)
+- [x] Ningún log con texto de documentos
+- [x] Cobertura ≥ 80 % en `nucleo::motor`
+- [x] Patterns mirrored, not reinvented

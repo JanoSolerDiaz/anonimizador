@@ -85,3 +85,7 @@ Excepción a «Sin reglas deterministas». Con v1, 3 de las 6 tarjetas del corpu
 El resto de identificadores (DNI, NIE, IBAN) siguen sin regla: en el informe, v1 los tapó todos.
 
 Limitación conocida: los IMEI de los teléfonos también tienen 15 cifras con dígito de control de Luhn, así que la regla los marca como `TARJETA_BANCARIA` en lugar de `DISPOSITIVO`. Quedan tapados igualmente. No se pueden excluir las secuencias de 15 cifras porque las tarjetas American Express tienen 15.
+
+### La coma entre dos cifras no separa palabras
+
+El motor parte el texto en palabras por espacios y por `, ; | " < > ( ) [ ] { } * ^`, como la tarjeta del modelo v2. Con esa definición, «189,90 €» eran dos palabras y v1 dejaba los céntimos a la vista. Ahora una coma entre dos cifras (decimal o de miles) no separa. Es un cambio de implementación, no del PRD, pero se anota porque se aparta de la definición de la que parte.
