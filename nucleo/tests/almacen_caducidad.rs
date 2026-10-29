@@ -160,10 +160,13 @@ fn after_removing_entries_the_lookups_still_work() {
 
 #[test]
 fn clearing_empties_everything_but_keeps_the_numbering() {
-    // Con un diccionario importado; su estructura llega en la tarea 6.
-    let mut value: serde_json::Value = serde_json::from_slice(&two_documents().to_json()).unwrap();
-    value["importados"] = serde_json::json!([{ "nombre": "de otra persona" }]);
-    let mut store = Store::from_json(&serde_json::to_vec(&value).unwrap()).unwrap();
+    // Con un diccionario importado de otro almacén.
+    let mut store = two_documents();
+    let dictionary = two_documents().export_dictionary("doc-a").unwrap();
+    store
+        .import_dictionary(&dictionary, "de otra persona")
+        .unwrap();
+    assert_eq!(store.imported().len(), 1);
     store.clear();
     assert!(store.documents().is_empty());
     assert_eq!(store.entries().count(), 0);
