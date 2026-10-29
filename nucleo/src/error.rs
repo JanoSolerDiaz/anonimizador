@@ -78,6 +78,14 @@ pub enum Error {
     #[error("Las sustituciones no son válidas: {0}.")]
     InvalidReplacement(String),
 
+    #[error(
+        "El documento está protegido con contraseña; quite la contraseña en Word y vuelva a intentarlo."
+    )]
+    DocxProtected,
+
+    #[error("El archivo no es un documento de Word válido: {0}.")]
+    DocxInvalid(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -112,6 +120,8 @@ mod tests {
             Error::DictionaryVersion(2),
             Error::TextNotUtf8,
             Error::InvalidReplacement("detalle".into()),
+            Error::DocxProtected,
+            Error::DocxInvalid("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
