@@ -293,3 +293,27 @@ fn keyring_error(error: &keyring::Error) -> Error {
     };
     Error::Keyring(what.into())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn if_the_new_write_fails_the_backup_stays_with_the_previous_store() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("almacen.anon");
+        let keys = MemoryKey::new();
+        let mut store = Store::new();
+        store.assign("EMAIL", "B-EMAIL", "ana@ejemplo.es", "doc-1");
+        save(&path, &store, &keys).unwrap();
+        let previous = fs::read(&path).unwrap();
+
+        let error = save_with(&path, &Store::new(), &keys, |_, _| {
+            Err(std::io::Error::other("disco lleno").into())
+        })
+        .unwrap_err();
+        assert!(matches!(error, Error::Io(_)));
+        assert_eq!(fs::read(backup_path(&path)).unwrap(), previous);
+        assert_eq!(load(&path, &keys).unwrap().to_json(), store.to_json());
+    }
+}
