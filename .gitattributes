@@ -1,0 +1,3 @@
+# El corpus DOCX se compara byte a byte con lo que genera
+# nucleo/examples/generar_corpus_docx.rs: Git no debe tocar sus finales de línea.
+tests/corpus/docx/** -text

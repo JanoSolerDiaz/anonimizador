@@ -1,0 +1,4 @@
+{
+  "nota": "Solo la cabecera de un archivo OLE, que es lo que tiene un DOCX con contraseña. Basta para reconocerlo; Word no lo abre.",
+  "protegido": true
+}

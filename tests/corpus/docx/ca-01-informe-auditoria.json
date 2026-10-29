@@ -1,0 +1,31 @@
+{
+  "autores_revision": [],
+  "entidades": [
+    {
+      "texto": "Jordi Puig Soler",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "677 123 450",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "Girona",
+      "tipo": "LUGAR"
+    },
+    {
+      "texto": "Núria Vidal Roca",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "nuria.vidal@correu-exemple.cat",
+      "tipo": "EMAIL"
+    }
+  ],
+  "imagenes": 0,
+  "metadatos_autor": [
+    "Pere Martí Font",
+    "Auditors Exemple SCP"
+  ],
+  "objetos": 0
+}

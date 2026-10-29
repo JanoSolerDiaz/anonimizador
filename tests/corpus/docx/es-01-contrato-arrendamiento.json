@@ -1,0 +1,56 @@
+{
+  "autores_revision": [],
+  "entidades": [
+    {
+      "texto": "Valencia",
+      "tipo": "LUGAR"
+    },
+    {
+      "texto": "Lucía Ferrer Ibáñez",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "48291736K",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "612 384 907",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "lucia.ferrer@correo-ejemplo.es",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "950 euros",
+      "tipo": "IMPORTE"
+    },
+    {
+      "texto": "ES91 2100 0418 4502 0005 1332",
+      "tipo": "CUENTA_BANCARIA"
+    },
+    {
+      "texto": "Pablo Navarro Gil",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "53720914R",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "pablo.navarro@correo-ejemplo.es",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "Calle de la Paz 14, 3.º B 46003 Valencia",
+      "tipo": "DIRECCION_POSTAL"
+    }
+  ],
+  "imagenes": 0,
+  "metadatos_autor": [
+    "Marta Salvador Ruiz",
+    "Andrés Molina Peña",
+    "Inmobiliaria Ejemplo Levante SL"
+  ],
+  "objetos": 0
+}

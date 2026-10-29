@@ -53,14 +53,14 @@ fn read_entries(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
             let mut file = archive.by_index(i).unwrap();
             let mut data = Vec::new();
             file.read_to_end(&mut data).unwrap();
-            (file.name().to_owned(), data)
+            (file.name().unwrap().into_owned(), data)
         })
         .collect()
 }
 
 /// Lee el XML entero; falla si está mal formado. Devuelve los atributos
 /// pedidos de cada elemento con ese nombre local.
-fn parse_xml(name: &str, data: &[u8], element: &[u8], attribute: &[u8]) -> Vec<String> {
+fn parse_xml(name: &str, data: &[u8], element: &str, attribute: &str) -> Vec<String> {
     let mut reader = Reader::from_reader(data);
     let mut found = Vec::new();
     let mut buffer = Vec::new();
@@ -71,7 +71,7 @@ fn parse_xml(name: &str, data: &[u8], element: &[u8], attribute: &[u8]) -> Vec<S
                 for a in e.attributes() {
                     let a = a.unwrap_or_else(|err| panic!("{name}: {err}"));
                     if a.key.local_name().as_ref() == attribute {
-                        found.push(String::from_utf8(a.value.into_owned()).unwrap());
+                        found.push(a.value.into_owned());
                     }
                 }
             }
@@ -90,7 +90,11 @@ fn the_generator_is_deterministic_and_matches_the_saved_corpus() {
     generador::generate(first.path()).unwrap();
     generador::generate(second.path()).unwrap();
     let generated = files_in(first.path());
-    assert_eq!(generated, files_in(second.path()), "dos ejecuciones difieren");
+    assert_eq!(
+        generated,
+        files_in(second.path()),
+        "dos ejecuciones difieren"
+    );
 
     let saved = files_in(&corpus_dir());
     let names = |files: &[(String, Vec<u8>)]| files.iter().map(|f| f.0.clone()).collect::<Vec<_>>();
@@ -112,7 +116,9 @@ fn the_corpus_covers_the_four_languages_and_a_protected_file() {
         .collect();
     for prefix in ["es-", "ca-", "en-", "fr-"] {
         assert!(
-            names.iter().any(|n| n.starts_with(prefix) && !n.contains("protegido")),
+            names
+                .iter()
+                .any(|n| n.starts_with(prefix) && !n.contains("protegido")),
             "falta un DOCX que empiece por {prefix}: {names:?}"
         );
     }
@@ -137,7 +143,10 @@ fn every_docx_has_its_expected_entities() {
         let entities = value["entidades"].as_array().unwrap();
         assert!(!entities.is_empty(), "{json:?}");
         for entity in entities {
-            assert!(entity["tipo"].is_string() && entity["texto"].is_string(), "{json:?}");
+            assert!(
+                entity["tipo"].is_string() && entity["texto"].is_string(),
+                "{json:?}"
+            );
         }
         for key in ["imagenes", "objetos"] {
             assert!(value[key].is_u64(), "{json:?}: falta {key}");
@@ -157,26 +166,29 @@ fn every_package_is_complete_and_its_xml_well_formed() {
         let entries = read_entries(&bytes);
         let names: BTreeSet<&str> = entries.iter().map(|e| e.0.as_str()).collect();
         let label = path.file_name().unwrap().to_string_lossy();
-        assert_eq!(entries[0].0, "[Content_Types].xml", "{label}: debe ir primero");
+        assert_eq!(
+            entries[0].0, "[Content_Types].xml",
+            "{label}: debe ir primero"
+        );
 
         for (name, data) in &entries {
             if name.ends_with(".xml") || name.ends_with(".rels") {
-                parse_xml(&format!("{label}/{name}"), data, b"", b"");
+                parse_xml(&format!("{label}/{name}"), data, "", "");
             }
         }
 
         // Cada parte declarada en [Content_Types].xml existe.
         let types = &entries[0].1;
-        for part in parse_xml(&label, types, b"Override", b"PartName") {
+        for part in parse_xml(&label, types, "Override", "PartName") {
             assert!(names.contains(&part[1..]), "{label}: falta {part}");
         }
 
         // Cada relación interna apunta a una parte que existe.
         for (name, data) in entries.iter().filter(|e| e.0.ends_with(".rels")) {
-            let base = name.replace("_rels/", "").replace(".rels", "");
-            let folder = Path::new(&base).parent().unwrap().to_string_lossy().into_owned();
-            let targets = parse_xml(name, data, b"Relationship", b"Target");
-            let modes = parse_xml(name, data, b"Relationship", b"TargetMode");
+            // `word/_rels/document.xml.rels` habla de rutas relativas a `word`.
+            let folder = name.rsplit_once("_rels/").unwrap().0.trim_end_matches('/');
+            let targets = parse_xml(name, data, "Relationship", "Target");
+            let modes = parse_xml(name, data, "Relationship", "TargetMode");
             let external = modes.iter().filter(|m| *m == "External").count();
             let internal: Vec<&String> = targets
                 .iter()
@@ -189,7 +201,10 @@ fn every_package_is_complete_and_its_xml_well_formed() {
                 } else {
                     format!("{folder}/{target}")
                 };
-                assert!(names.contains(full.as_str()), "{label}/{name}: falta {full}");
+                assert!(
+                    names.contains(full.as_str()),
+                    "{label}/{name}: falta {full}"
+                );
             }
         }
     }

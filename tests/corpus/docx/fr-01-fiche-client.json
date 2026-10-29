@@ -1,0 +1,35 @@
+{
+  "autores_revision": [],
+  "entidades": [
+    {
+      "texto": "Camille Lefèvre",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "Lyon",
+      "tipo": "LUGAR"
+    },
+    {
+      "texto": "camille.lefevre@exemple-courriel.fr",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "06 12 34 56 78",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "15 rue des Lilas, 69003 Lyon",
+      "tipo": "DIRECCION_POSTAL"
+    },
+    {
+      "texto": "FR76 3000 6000 0112 3456 7890 189",
+      "tipo": "CUENTA_BANCARIA"
+    }
+  ],
+  "imagenes": 1,
+  "metadatos_autor": [
+    "Julien Moreau",
+    "Exemple Conseil SARL"
+  ],
+  "objetos": 1
+}
