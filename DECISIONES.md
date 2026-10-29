@@ -127,3 +127,7 @@ un portátil de referencia en el hito 6.
 Caducar, olvidar un documento y «Vaciar todo» borran documentos y entradas, pero los contadores de cada tipo no bajan nunca. Un documento anonimizado antes puede seguir circulando con `[NOMBRE_PERSONA_0003]`; si ese número se diera después a otra persona, al desanonimizar el documento viejo con el almacén nuevo saldría un nombre equivocado sin ningún aviso. Con la numeración intacta, el marcador viejo aparece como «no está en el almacén», que es lo correcto. Es una interpretación de «Vaciar todo», no un cambio del PRD.
 
 Un documento se borra el mismo día que indica su campo `caduca`: el ejemplo del PRD, creado el 22 de octubre, caduca y se borra el 20 de enero, a los 90 días exactos.
+
+### También se vacían los autores de comentarios y del control de cambios
+
+Word guarda en `w:author` (y en los comentarios también `w:initials`) el nombre y las iniciales de quien escribió cada comentario y de quien hizo cada cambio con control de cambios (`w:ins`, `w:del` y los cambios de formato). Son datos personales que el PRD no menciona: solo pide vaciar `dc:creator`, `cp:lastModifiedBy` y `Company`. Jano aceptó el 2026-10-29 que el escritor DOCX vacíe también esos atributos en todas las partes que procesa. El corpus DOCX los recoge en el campo `autores_revision` de cada JSON.
