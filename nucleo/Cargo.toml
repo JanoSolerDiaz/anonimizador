@@ -33,8 +33,10 @@ zip = { version = "9.1.3", default-features = false, features = ["deflate-flate2
 quick-xml = "0.42.0"
 
 # Almacén cifrado. Sin el generador de aes-gcm: la clave y los nonces salen
-# de getrandom directamente. `zeroize` borra la clave de la memoria al soltarla.
+# de getrandom directamente. `zeroize` borra la clave y el JSON
+# descifrado de la memoria al soltarlos.
 aes-gcm = { version = "0.11.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
+zeroize = "1.9.1"
 getrandom = "0.4.3"
 # Modo `v1` (el de por defecto): elige solo el Administrador de credenciales en
 # Windows y el Llavero en Mac. Los almacenes de Linux no entran en esos binarios.

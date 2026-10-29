@@ -8,6 +8,8 @@
 //! La clave de un dato es su valor normalizado, sin el tipo (ver
 //! `DECISIONES.md`). Ningún error lleva valores del almacén.
 
+pub mod archivo;
+
 use std::collections::{BTreeMap, HashMap};
 
 use jiff::civil::Date;

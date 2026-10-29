@@ -47,7 +47,10 @@ fn the_first_save_creates_the_key_and_the_store_round_trips() {
     let keys = MemoryKey::new();
     let store = store_with_data();
     save(&path, &store, &keys).unwrap();
-    assert!(keys.load().unwrap().is_some(), "la clave se crea al guardar");
+    assert!(
+        keys.load().unwrap().is_some(),
+        "la clave se crea al guardar"
+    );
 
     let again = load(&path, &keys).unwrap();
     assert_eq!(again.to_json(), store.to_json());
@@ -131,10 +134,7 @@ fn a_cut_file_or_another_file_is_rejected() {
     let original = fs::read(&path).unwrap();
 
     fs::write(&path, &original[..original.len() - 10]).unwrap();
-    assert!(matches!(
-        load(&path, &keys),
-        Err(Error::StoreUndecryptable)
-    ));
+    assert!(matches!(load(&path, &keys), Err(Error::StoreUndecryptable)));
     fs::write(&path, &original[..5]).unwrap();
     assert!(matches!(load(&path, &keys), Err(Error::StoreInvalid(_))));
     fs::write(&path, b"{\"formato\": \"anonimizador-almacen\"}").unwrap();
@@ -198,7 +198,11 @@ fn an_interrupted_write_keeps_the_previous_store() {
     // Lo que queda si el proceso muere a mitad: la copia `.bak` y un
     // temporal sin renombrar.
     fs::copy(&path, bak_path(dir.path())).unwrap();
-    fs::write(dir.path().join(".anonimizador-0123456789abcdef.tmp"), b"a medias").unwrap();
+    fs::write(
+        dir.path().join(".anonimizador-0123456789abcdef.tmp"),
+        b"a medias",
+    )
+    .unwrap();
     assert_eq!(load(&path, &keys).unwrap().to_json(), store.to_json());
 
     // La siguiente escritura termina bien y retira la copia.

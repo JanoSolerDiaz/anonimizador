@@ -48,6 +48,17 @@ pub enum Error {
     )]
     StoreVersion(u32),
 
+    #[error(
+        "No se encuentra la clave del almacén en el almacén de credenciales del sistema; sin ella no se puede abrir."
+    )]
+    StoreKeyMissing,
+
+    #[error("El almacén no se puede descifrar: la clave no es la suya o el archivo está dañado.")]
+    StoreUndecryptable,
+
+    #[error("No se ha podido usar el almacén de credenciales del sistema: {0}.")]
+    Keyring(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -74,6 +85,9 @@ mod tests {
             Error::Corpus("detalle".into()),
             Error::StoreInvalid("detalle".into()),
             Error::StoreVersion(2),
+            Error::StoreKeyMissing,
+            Error::StoreUndecryptable,
+            Error::Keyring("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
