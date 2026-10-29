@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use quick_xml::Reader;
-use quick_xml::events::{BytesStart, Event};
+use quick_xml::events::Event;
 
 use super::extractor::{attribute, xml_error};
 use crate::Result;
@@ -82,33 +82,43 @@ fn heading_level(name: &str) -> Option<u8> {
 fn read_numbering(xml: &str) -> Result<HashMap<String, HashMap<u8, bool>>> {
     let part = "word/numbering.xml";
     let mut reader = Reader::from_str(xml);
+    // `abstractNumId` → (`ilvl` → numerada), y cada `numId` con su abstracta.
     let mut abstracts: HashMap<String, HashMap<u8, bool>> = HashMap::new();
     let mut nums: Vec<(String, String)> = Vec::new();
-    let mut abstract_id: Option<String> = None;
-    let mut level: Option<u8> = None;
-    let mut num_id: Option<String> = None;
+    let (mut abstract_id, mut level, mut num_id) = (None::<String>, None::<u8>, None::<String>);
     loop {
-        let event = reader.read_event().map_err(|_| xml_error(part, &reader))?;
-        let (start, empty) = match &event {
-            Event::Start(e) => (Some(e), false),
-            Event::Empty(e) => (Some(e), true),
-            _ => (None, false),
-        };
-        if let Some(e) = start {
-            handle_numbering_element(
-                e,
-                empty,
-                &mut abstracts,
-                &mut nums,
-                &mut abstract_id,
-                &mut level,
-                &mut num_id,
-            );
-        }
-        match event {
-            Event::End(e) if e.name().as_ref() == "w:abstractNum" => abstract_id = None,
-            Event::End(e) if e.name().as_ref() == "w:lvl" => level = None,
-            Event::End(e) if e.name().as_ref() == "w:num" => num_id = None,
+        match reader.read_event().map_err(|_| xml_error(part, &reader))? {
+            Event::Start(e) => match e.name().as_ref() {
+                "w:abstractNum" => abstract_id = attribute(&e, "w:abstractNumId"),
+                "w:lvl" => level = attribute(&e, "w:ilvl").and_then(|v| v.parse().ok()),
+                "w:num" => num_id = attribute(&e, "w:numId"),
+                _ => {}
+            },
+            Event::Empty(e) => match e.name().as_ref() {
+                "w:numFmt" => {
+                    if let (Some(id), Some(lvl), Some(format)) =
+                        (&abstract_id, level, attribute(&e, "w:val"))
+                    {
+                        let ordered = format != "bullet" && format != "none";
+                        abstracts
+                            .entry(id.clone())
+                            .or_default()
+                            .insert(lvl, ordered);
+                    }
+                }
+                "w:abstractNumId" => {
+                    if let (Some(num), Some(target)) = (&num_id, attribute(&e, "w:val")) {
+                        nums.push((num.clone(), target));
+                    }
+                }
+                _ => {}
+            },
+            Event::End(e) => match e.name().as_ref() {
+                "w:abstractNum" => abstract_id = None,
+                "w:lvl" => level = None,
+                "w:num" => num_id = None,
+                _ => {}
+            },
             Event::Eof => break,
             _ => {}
         }
@@ -117,37 +127,4 @@ fn read_numbering(xml: &str) -> Result<HashMap<String, HashMap<u8, bool>>> {
         .into_iter()
         .filter_map(|(num, abstract_id)| Some((num, abstracts.get(&abstract_id)?.clone())))
         .collect())
-}
-
-fn handle_numbering_element(
-    e: &BytesStart<'_>,
-    empty: bool,
-    abstracts: &mut HashMap<String, HashMap<u8, bool>>,
-    nums: &mut Vec<(String, String)>,
-    abstract_id: &mut Option<String>,
-    level: &mut Option<u8>,
-    num_id: &mut Option<String>,
-) {
-    match e.name().as_ref() {
-        "w:abstractNum" if !empty => *abstract_id = attribute(e, "w:abstractNumId"),
-        "w:lvl" if !empty => *level = attribute(e, "w:ilvl").and_then(|v| v.parse().ok()),
-        "w:numFmt" => {
-            if let (Some(id), Some(lvl), Some(format)) =
-                (abstract_id.as_ref(), *level, attribute(e, "w:val"))
-            {
-                let ordered = format != "bullet" && format != "none";
-                abstracts
-                    .entry(id.clone())
-                    .or_default()
-                    .insert(lvl, ordered);
-            }
-        }
-        "w:num" if !empty => *num_id = attribute(e, "w:numId"),
-        "w:abstractNumId" => {
-            if let (Some(num), Some(target)) = (num_id.as_ref(), attribute(e, "w:val")) {
-                nums.push((num.clone(), target));
-            }
-        }
-        _ => {}
-    }
 }
