@@ -182,6 +182,18 @@ pub fn load(path: &Path, keys: &dyn KeyProvider) -> Result<Store> {
 /// Cifra y guarda el almacén entero en `path`. La primera vez crea la clave.
 /// Si ya hay un archivo y falta la clave, da error sin tocar nada.
 pub fn save(path: &Path, store: &Store, keys: &dyn KeyProvider) -> Result<()> {
+    save_with(path, store, keys, |path, bytes| {
+        write_atomic(path, |out| Ok(out.write_all(bytes)?))
+    })
+}
+
+/// `save` con la escritura final aparte, para poder simular que falla.
+fn save_with(
+    path: &Path,
+    store: &Store,
+    keys: &dyn KeyProvider,
+    write: impl FnOnce(&Path, &[u8]) -> Result<()>,
+) -> Result<()> {
     let backup = backup_path(path);
     let key = match keys.load()? {
         Some(key) => key,
@@ -198,7 +210,7 @@ pub fn save(path: &Path, store: &Store, keys: &dyn KeyProvider) -> Result<()> {
     if path.exists() {
         fs::copy(path, &backup)?;
     }
-    write_atomic(path, |out| Ok(out.write_all(&bytes)?))?;
+    write(path, &bytes)?;
     match fs::remove_file(&backup) {
         Err(error) if error.kind() != ErrorKind::NotFound => Err(error.into()),
         _ => Ok(()),
