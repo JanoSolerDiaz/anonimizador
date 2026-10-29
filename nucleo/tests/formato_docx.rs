@@ -397,3 +397,37 @@ fn something_that_is_not_a_docx_is_rejected() {
         assert!(!error.to_string().contains("Ana"), "{error}");
     }
 }
+
+#[test]
+fn tab_stops_of_the_paragraph_format_are_not_spaces() {
+    // `w:tabs` define posiciones de tabulación; no es texto.
+    let bytes = docx_with(
+        "<w:p><w:pPr><w:tabs><w:tab w:val=\"left\" w:pos=\"720\"/></w:tabs></w:pPr><w:r><w:t>Ana</w:t></w:r></w:p>",
+        None,
+    );
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    assert_eq!(texts(document.segments()), ["Ana"]);
+}
+
+#[test]
+fn numbering_zero_means_no_list() {
+    let bytes = docx_with(
+        "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"0\"/></w:numPr></w:pPr><w:r><w:t>Sin lista</w:t></w:r></w:p>",
+        None,
+    );
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    assert_eq!(document.segments()[0].style, ParagraphStyle::Normal);
+}
+
+#[test]
+fn heading_names_are_compared_without_case() {
+    // Otros programas escriben «Heading 2» con mayúscula.
+    let bytes = docx_with(
+        "<w:p><w:pPr><w:pStyle w:val=\"H2\"/></w:pPr><w:r><w:t>Anexo</w:t></w:r></w:p>",
+        Some(
+            "<w:style w:type=\"paragraph\" w:styleId=\"H2\"><w:name w:val=\"Heading 2\"/></w:style>",
+        ),
+    );
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    assert_eq!(document.segments()[0].style, ParagraphStyle::Heading(2));
+}
