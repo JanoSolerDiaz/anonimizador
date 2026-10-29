@@ -3,7 +3,7 @@
 //! Esta parte es la estructura una vez descifrada (PRD, «Estructura, una vez
 //! descifrado»): contadores por tipo, entradas, documentos procesados y
 //! diccionarios importados. El cifrado y el archivo están en [`archivo`];
-//! exportar e importar llegan en la tarea 6 del hito 3.
+//! exportar e importar, en [`diccionario`].
 //!
 //! Al borrar entradas (caducidad, olvidar, vaciar) los contadores no bajan:
 //! un documento anonimizado antes puede seguir llevando un marcador borrado,
@@ -13,16 +13,17 @@
 //! `DECISIONES.md`). Ningún error lleva valores del almacén.
 
 pub mod archivo;
+pub mod diccionario;
 
 use std::collections::{BTreeMap, HashMap};
 
 use jiff::Span;
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::motor::marcadores::{format_marker, normalize};
 use crate::{Error, Result};
+use diccionario::ImportedDictionary;
 
 /// Valor del campo `formato`.
 pub const STORE_FORMAT: &str = "anonimizador-almacen";
@@ -140,8 +141,7 @@ pub struct Store {
     counters: BTreeMap<String, u32>,
     entries: Vec<StoreEntry>,
     documents: Vec<DocumentRecord>,
-    /// Diccionarios importados; su estructura llega con la tarea 6.
-    imported: Vec<Value>,
+    imported: Vec<ImportedDictionary>,
     by_key: HashMap<String, usize>,
     by_marker: HashMap<String, usize>,
     /// Plazo de caducidad. No se guarda en el archivo: lo fija quien abre el
@@ -178,7 +178,7 @@ struct StoreJsonOut<'a> {
     contadores: &'a BTreeMap<String, u32>,
     entradas: &'a [StoreEntry],
     documentos: &'a [DocumentRecord],
-    importados: &'a [Value],
+    importados: &'a [ImportedDictionary],
 }
 
 #[derive(Deserialize)]
@@ -186,7 +186,7 @@ struct StoreJsonIn {
     contadores: BTreeMap<String, u32>,
     entradas: Vec<StoreEntry>,
     documentos: Vec<DocumentRecord>,
-    importados: Vec<Value>,
+    importados: Vec<ImportedDictionary>,
 }
 
 impl Store {
@@ -400,9 +400,14 @@ fn marker_number(marker: &str, kind: &str) -> Option<u32> {
         .ok()
 }
 
-/// Error de lectura del JSON sin el texto de serde_json, que puede citar
-/// valores del almacén. Solo la clase de error y la posición.
+/// Error de lectura del JSON del almacén; ver [`json_problem`].
 fn json_error(error: serde_json::Error) -> Error {
+    Error::StoreInvalid(json_problem(&error))
+}
+
+/// Qué falla en un JSON, sin el texto de serde_json, que puede citar valores
+/// del almacén. Solo la clase de error y la posición.
+fn json_problem(error: &serde_json::Error) -> String {
     use serde_json::error::Category;
     let what = match error.classify() {
         Category::Io => "no se ha podido leer",
@@ -410,9 +415,9 @@ fn json_error(error: serde_json::Error) -> Error {
         Category::Data => "falta un campo o tiene un tipo inesperado",
         Category::Eof => "el archivo está incompleto",
     };
-    Error::StoreInvalid(format!(
+    format!(
         "{what} (línea {}, columna {})",
         error.line(),
         error.column()
-    ))
+    )
 }

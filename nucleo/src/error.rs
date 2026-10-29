@@ -59,6 +59,17 @@ pub enum Error {
     #[error("No se ha podido usar el almacén de credenciales del sistema: {0}.")]
     Keyring(String),
 
+    #[error("Ese documento no está en el almacén.")]
+    DocumentNotFound,
+
+    #[error("El diccionario no tiene un formato válido: {0}.")]
+    DictionaryInvalid(String),
+
+    #[error(
+        "El diccionario es de una versión más nueva de la aplicación (formato {0}); actualice la aplicación para importarlo."
+    )]
+    DictionaryVersion(u32),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -88,6 +99,9 @@ mod tests {
             Error::StoreKeyMissing,
             Error::StoreUndecryptable,
             Error::Keyring("detalle".into()),
+            Error::DocumentNotFound,
+            Error::DictionaryInvalid("detalle".into()),
+            Error::DictionaryVersion(2),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
