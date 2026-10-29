@@ -121,3 +121,9 @@ con 4 hilos en el equipo de desarrollo, frente a los 5 s del PRD. Jano decidió
 aceptarlo. Las otras lecturas siguen disponibles en la CLI con
 `--contexto parrafo|documento` para medir. Habrá que confirmar los tiempos en
 un portátil de referencia en el hito 6.
+
+### Borrar del almacén no reinicia la numeración de los marcadores
+
+Caducar, olvidar un documento y «Vaciar todo» borran documentos y entradas, pero los contadores de cada tipo no bajan nunca. Un documento anonimizado antes puede seguir circulando con `[NOMBRE_PERSONA_0003]`; si ese número se diera después a otra persona, al desanonimizar el documento viejo con el almacén nuevo saldría un nombre equivocado sin ningún aviso. Con la numeración intacta, el marcador viejo aparece como «no está en el almacén», que es lo correcto. Es una interpretación de «Vaciar todo», no un cambio del PRD.
+
+Un documento se borra el mismo día que indica su campo `caduca`: el ejemplo del PRD, creado el 22 de octubre, caduca y se borra el 20 de enero, a los 90 días exactos.
