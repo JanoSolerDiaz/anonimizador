@@ -70,6 +70,14 @@ pub enum Error {
     )]
     DictionaryVersion(u32),
 
+    #[error(
+        "El archivo de texto no está en UTF-8; guárdelo en UTF-8 desde su editor y vuelva a intentarlo."
+    )]
+    TextNotUtf8,
+
+    #[error("Las sustituciones no son válidas: {0}.")]
+    InvalidReplacement(String),
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -102,6 +110,8 @@ mod tests {
             Error::DocumentNotFound,
             Error::DictionaryInvalid("detalle".into()),
             Error::DictionaryVersion(2),
+            Error::TextNotUtf8,
+            Error::InvalidReplacement("detalle".into()),
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {
