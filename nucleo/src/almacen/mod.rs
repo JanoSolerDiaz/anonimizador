@@ -2,8 +2,12 @@
 //!
 //! Esta parte es la estructura una vez descifrada (PRD, «Estructura, una vez
 //! descifrado»): contadores por tipo, entradas, documentos procesados y
-//! diccionarios importados. El cifrado, la caducidad y exportar e importar
-//! llegan en las tareas siguientes del hito 3.
+//! diccionarios importados. El cifrado y el archivo están en [`archivo`];
+//! exportar e importar llegan en la tarea 6 del hito 3.
+//!
+//! Al borrar entradas (caducidad, olvidar, vaciar) los contadores no bajan:
+//! un documento anonimizado antes puede seguir llevando un marcador borrado,
+//! y si se diera a otro valor, al desanonimizarlo saldría el dato equivocado.
 //!
 //! La clave de un dato es su valor normalizado, sin el tipo (ver
 //! `DECISIONES.md`). Ningún error lleva valores del almacén.
@@ -12,6 +16,7 @@ pub mod archivo;
 
 use std::collections::{BTreeMap, HashMap};
 
+use jiff::Span;
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,6 +28,8 @@ use crate::{Error, Result};
 pub const STORE_FORMAT: &str = "anonimizador-almacen";
 /// Versión del formato que escribe esta aplicación.
 pub const STORE_FORMAT_VERSION: u32 = 1;
+/// Días hasta que caduca un documento si nadie fija otro plazo.
+pub const DEFAULT_RETENTION_DAYS: u32 = 90;
 
 /// Un dato con su marcador.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -128,7 +135,7 @@ pub struct DocumentRecord {
 }
 
 /// Almacén en memoria.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Store {
     counters: BTreeMap<String, u32>,
     entries: Vec<StoreEntry>,
@@ -137,6 +144,23 @@ pub struct Store {
     imported: Vec<Value>,
     by_key: HashMap<String, usize>,
     by_marker: HashMap<String, usize>,
+    /// Plazo de caducidad. No se guarda en el archivo: lo fija quien abre el
+    /// almacén (en el hito 6, la política de sistemas).
+    retention_days: u32,
+}
+
+impl Default for Store {
+    fn default() -> Self {
+        Store {
+            counters: BTreeMap::new(),
+            entries: Vec::new(),
+            documents: Vec::new(),
+            imported: Vec::new(),
+            by_key: HashMap::new(),
+            by_marker: HashMap::new(),
+            retention_days: DEFAULT_RETENTION_DAYS,
+        }
+    }
 }
 
 /// Cabecera que se lee antes que el resto, para distinguir un archivo que no
@@ -168,6 +192,21 @@ struct StoreJsonIn {
 impl Store {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// El mismo almacén con otro plazo de caducidad.
+    pub fn with_retention_days(mut self, days: u32) -> Self {
+        self.retention_days = days;
+        self
+    }
+
+    pub fn retention_days(&self) -> u32 {
+        self.retention_days
+    }
+
+    /// Fecha de caducidad de un documento procesado `today`.
+    pub fn expiry_from(&self, today: Date) -> Date {
+        today.saturating_add(Span::new().days(i64::from(self.retention_days)))
     }
 
     /// Lee el JSON descifrado y comprueba que es coherente.
@@ -276,6 +315,54 @@ impl Store {
         match self.documents.iter_mut().find(|d| d.id == document.id) {
             Some(existing) => *existing = document,
             None => self.documents.push(document),
+        }
+    }
+
+    /// Borra los documentos que caducan `today` o antes, y las entradas que
+    /// ya no usa ningún documento.
+    pub fn purge(&mut self, today: Date) {
+        let expired: Vec<String> = self
+            .documents
+            .iter()
+            .filter(|d| d.expires <= today)
+            .map(|d| d.id.clone())
+            .collect();
+        self.remove_documents(&expired);
+    }
+
+    /// Borra un documento y sus entradas que no usen otros documentos.
+    pub fn forget(&mut self, document: &str) {
+        self.remove_documents(&[document.to_owned()]);
+    }
+
+    /// Lo vacía todo salvo los contadores.
+    pub fn clear(&mut self) {
+        self.entries.clear();
+        self.documents.clear();
+        self.imported.clear();
+        self.by_key.clear();
+        self.by_marker.clear();
+    }
+
+    fn remove_documents(&mut self, ids: &[String]) {
+        if ids.is_empty() {
+            return;
+        }
+        self.documents.retain(|d| !ids.contains(&d.id));
+        for entry in &mut self.entries {
+            entry.documents.retain(|d| !ids.contains(d));
+        }
+        self.entries.retain(|e| !e.documents.is_empty());
+        self.reindex();
+    }
+
+    /// Rehace los índices después de borrar entradas.
+    fn reindex(&mut self) {
+        self.by_key.clear();
+        self.by_marker.clear();
+        for (index, entry) in self.entries.iter().enumerate() {
+            self.by_key.insert(entry.normalized_key.clone(), index);
+            self.by_marker.insert(entry.marker.clone(), index);
         }
     }
 
