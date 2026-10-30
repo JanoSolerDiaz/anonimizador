@@ -509,3 +509,43 @@ fn the_original_file_does_not_change() {
         "Hola [NOMBRE_PERSONA_0001].\n"
     );
 }
+
+#[test]
+fn odd_names_between_brackets_are_not_markers() {
+    let long = format!("[{}_0001]", "A".repeat(70));
+    for text in [
+        "[A1_0042]",
+        "[NOMBRE__0042]",
+        "[_NOMBRE_0042]",
+        "[NOMBRE_PERSONA__0042]",
+        "[P4X2]",
+        long.as_str(),
+    ] {
+        assert!(find_markers(text).is_empty(), "{text}");
+    }
+}
+
+#[test]
+fn short_forms_of_the_own_entries_are_restored() {
+    let json = serde_json::json!({
+        "formato": "anonimizador-almacen",
+        "version_formato": 1,
+        "contadores": { "NOMBRE_PERSONA": 42 },
+        "entradas": [{
+            "marcador": "[NOMBRE_PERSONA_0042]",
+            "forma_corta": "[P42]",
+            "tipo": "NOMBRE_PERSONA",
+            "etiqueta_modelo": "PERSON",
+            "valor": "Luis Mas",
+            "clave_normalizada": "luis mas",
+            "variantes": ["Luis Mas"],
+            "documentos": ["doc-pdf"]
+        }],
+        "documentos": [],
+        "importados": []
+    });
+    let store = Store::from_json(&serde_json::to_vec(&json).unwrap()).unwrap();
+    let (text, restored, _) = restore("Firma: [ p42 ].", &store, None);
+    assert_eq!(text, "Firma: Luis Mas.");
+    assert_eq!(restored, ["[P42]"]);
+}

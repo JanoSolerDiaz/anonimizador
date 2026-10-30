@@ -588,3 +588,59 @@ fn internal_relationships_never_get_literal_replacements() {
     let rels = "word/_rels/document.xml.rels";
     assert_eq!(part(&output, rels), part(&bytes, rels));
 }
+
+#[test]
+fn tab_stops_of_the_paragraph_do_not_shift_the_breaks() {
+    let bytes = docx_with(
+        "<w:p><w:pPr><w:tabs><w:tab w:val=\"left\" w:pos=\"720\"/></w:tabs></w:pPr>\
+         <w:r><w:t>Uno</w:t><w:tab/><w:t>Calle Mayor 1</w:t><w:br/><w:t>Lugo</w:t></w:r></w:p>",
+        &[],
+    );
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    let (start, end) = char_range(&document.segments()[0].text, "Calle Mayor 1 Lugo");
+    let output = document
+        .write(
+            &[Replacement {
+                segment: 0,
+                start,
+                end,
+                text: "[DIRECCION_POSTAL_0001]".into(),
+            }],
+            &[],
+        )
+        .unwrap();
+    let xml = part(&output, "word/document.xml");
+    assert!(
+        xml.contains("<w:tab w:val=\"left\" w:pos=\"720\"/>"),
+        "{xml}"
+    );
+    assert!(
+        xml.contains("<w:t>Uno</w:t><w:tab/><w:t>[DIRECCION_POSTAL_0001]</w:t><w:t></w:t>"),
+        "{xml}"
+    );
+}
+
+#[test]
+fn a_break_written_with_open_and_close_tags_is_removed_whole() {
+    let bytes = docx_with(
+        "<w:p><w:r><w:t>Calle Mayor 1</w:t><w:br></w:br><w:t>Lugo</w:t></w:r></w:p>",
+        &[],
+    );
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    let output = document
+        .write(
+            &[Replacement {
+                segment: 0,
+                start: 0,
+                end: 18,
+                text: "[D]".into(),
+            }],
+            &[],
+        )
+        .unwrap();
+    let xml = part(&output, "word/document.xml");
+    assert!(
+        xml.contains("<w:r><w:t>[D]</w:t><w:t></w:t></w:r>"),
+        "{xml}"
+    );
+}
