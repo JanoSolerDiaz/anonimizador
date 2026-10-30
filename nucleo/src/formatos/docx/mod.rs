@@ -212,6 +212,14 @@ impl DocxDocument {
     pub fn warnings(&self) -> Warnings {
         self.warnings
     }
+
+    pub fn markdown(&self, _replacements: &[super::Replacement]) -> Result<String> {
+        Ok(String::new())
+    }
+
+    pub fn plain_text(&self, _replacements: &[super::Replacement]) -> Result<String> {
+        Ok(String::new())
+    }
 }
 
 /// Partes con texto, en el orden en que se presentan los segmentos.
