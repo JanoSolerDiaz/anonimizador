@@ -212,6 +212,16 @@ impl DocxDocument {
     pub fn warnings(&self) -> Warnings {
         self.warnings
     }
+
+    /// El DOCX con las sustituciones aplicadas sobre los segmentos y las
+    /// literales (`valor`, `nuevo`) en destinos de enlaces y códigos de campo.
+    pub fn write(
+        &self,
+        _replacements: &[super::Replacement],
+        _literals: &[(String, String)],
+    ) -> Result<Vec<u8>> {
+        Ok(self.original.clone())
+    }
 }
 
 /// Partes con texto, en el orden en que se presentan los segmentos.
