@@ -73,6 +73,9 @@ pub struct Segment {
     pub style: ParagraphStyle,
     pub cell: Option<TableCell>,
     pub map: Vec<Option<FragmentPos>>,
+    /// Tabuladores y saltos: posición en `text` y número del elemento en la
+    /// parte. Una sustitución que los cubre los borra.
+    pub breaks: Vec<(usize, usize)>,
 }
 
 /// Destino de un enlace externo (`mailto:`, `https:`…).

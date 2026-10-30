@@ -3,7 +3,7 @@
 //! extractor y se empalman los bytes nuevos en su sitio, sin volver a
 //! serializar el resto. Las partes sin cambios se copian del ZIP tal cual.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Write};
 
 use quick_xml::escape::partial_escape;
@@ -11,7 +11,8 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, Writer};
 
 use super::extractor::{
-    APP_AUTHOR_FIELDS, CORE_AUTHOR_FIELDS, CORE_TEXT_FIELDS, append_text, attribute, xml_error,
+    APP_AUTHOR_FIELDS, BREAK_ELEMENTS, CORE_AUTHOR_FIELDS, CORE_TEXT_FIELDS, append_text,
+    attribute, xml_error,
 };
 use super::{APP_PART, CORE_PART, DocxDocument, FragmentPos, is_word_rels, read_part, text_parts};
 use crate::formatos::{Replacement, order_for_writing};
@@ -27,6 +28,8 @@ struct Rules<'a> {
     fragments: &'a [&'a str],
     /// Texto nuevo de los fragmentos que cambian.
     new_fragments: Option<&'a HashMap<usize, String>>,
+    /// Tabuladores y saltos que se borran, numerados como en el extractor.
+    removed_breaks: Option<&'a HashSet<usize>>,
     /// Si los fragmentos con un espacio en un extremo necesitan
     /// `xml:space="preserve"`.
     preserve_space: bool,
@@ -51,6 +54,15 @@ struct Open<'x> {
     text: String,
 }
 
+/// Lo que cambian las sustituciones en cada parte.
+#[derive(Default)]
+struct Changes<'a> {
+    /// Texto nuevo de los fragmentos que cambian.
+    fragments: HashMap<&'a str, HashMap<usize, String>>,
+    /// Tabuladores y saltos cubiertos por una sustitución.
+    breaks: HashMap<&'a str, HashSet<usize>>,
+}
+
 enum Kind {
     Fragment(usize),
     Blank,
@@ -67,7 +79,7 @@ impl DocxDocument {
         replacements: &[Replacement],
         literals: &[(String, String)],
     ) -> Result<Vec<u8>> {
-        let new_fragments = self.apply(replacements)?;
+        let changes = self.apply(replacements)?;
         // Las largas primero, para que una que contenga a otra no se quede a
         // medias.
         let mut literals: Vec<&(String, String)> = literals
@@ -91,7 +103,8 @@ impl DocxDocument {
             let rules = if texts.contains(name) {
                 Some(Rules {
                     fragments: &["w:t", "w:delText"],
-                    new_fragments: Some(new_fragments.get(name.as_str()).unwrap_or(&none)),
+                    new_fragments: Some(changes.fragments.get(name.as_str()).unwrap_or(&none)),
+                    removed_breaks: changes.breaks.get(name.as_str()),
                     preserve_space: true,
                     literal: &["w:instrText", "w:delInstrText"],
                     blank_attributes: &["w:author", "w:initials"],
@@ -101,7 +114,7 @@ impl DocxDocument {
             } else if name == CORE_PART {
                 Some(Rules {
                     fragments: &CORE_TEXT_FIELDS,
-                    new_fragments: Some(new_fragments.get(name.as_str()).unwrap_or(&none)),
+                    new_fragments: Some(changes.fragments.get(name.as_str()).unwrap_or(&none)),
                     blank: &CORE_AUTHOR_FIELDS,
                     ..Rules::default()
                 })
@@ -154,10 +167,13 @@ impl DocxDocument {
 
     /// Texto nuevo de cada fragmento que cambia, por parte. El marcador va
     /// en el primer fragmento que cubre la sustitución; de los siguientes se
-    /// borra la parte cubierta.
-    fn apply(&self, replacements: &[Replacement]) -> Result<HashMap<&str, HashMap<usize, String>>> {
+    /// borra la parte cubierta, y también los tabuladores y saltos que haya
+    /// en medio: así, al restaurar el valor, que lleva un espacio en su
+    /// lugar, el texto vuelve a ser el mismo.
+    fn apply(&self, replacements: &[Replacement]) -> Result<Changes<'_>> {
         let lengths: Vec<usize> = self.segments.iter().map(|s| s.map.len()).collect();
         let mut changed: HashMap<&str, HashMap<usize, Vec<char>>> = HashMap::new();
+        let mut breaks: HashMap<&str, HashSet<usize>> = HashMap::new();
         // De la última a la primera: en un mismo fragmento, las posiciones de
         // las que faltan no se mueven.
         for r in order_for_writing(replacements, &lengths)? {
@@ -173,6 +189,12 @@ impl DocxDocument {
                     r.start, r.end, r.segment
                 )));
             };
+            let removed = breaks.entry(segment.part.as_str()).or_default();
+            for &(at, index) in &segment.breaks {
+                if (r.start..r.end).contains(&at) {
+                    removed.insert(index);
+                }
+            }
             let fragments = changed.entry(segment.part.as_str()).or_default();
             // Los caracteres de un fragmento van seguidos en el segmento.
             for group in positions.chunk_by(|a, b| a.fragment == b.fragment) {
@@ -191,7 +213,7 @@ impl DocxDocument {
                 );
             }
         }
-        Ok(changed
+        let fragments = changed
             .into_iter()
             .map(|(part, fragments)| {
                 let fragments = fragments
@@ -201,7 +223,8 @@ impl DocxDocument {
                     .collect();
                 (part, fragments)
             })
-            .collect())
+            .collect();
+        Ok(Changes { fragments, breaks })
     }
 }
 
@@ -212,6 +235,10 @@ fn rewrite(part: &str, xml: &str, rules: &Rules) -> Result<Option<String>> {
     let mut edits: Vec<(usize, usize, String)> = Vec::new();
     let mut fragment = 0usize;
     let mut open: Option<Open> = None;
+    let mut run_depth = 0usize;
+    let mut break_count = 0usize;
+    // Inicio de un salto escrito con apertura y cierre que se borra.
+    let mut open_break: Option<usize> = None;
     loop {
         let before = reader.buffer_position() as usize;
         let event = reader.read_event().map_err(|_| xml_error(part, &reader))?;
@@ -221,6 +248,22 @@ fn rewrite(part: &str, xml: &str, rules: &Rules) -> Result<Option<String>> {
             Event::Start(e) | Event::Empty(e) => {
                 let name = e.name();
                 let name = name.as_ref();
+                if name == "w:r" && !empty {
+                    run_depth += 1;
+                }
+                if let Some(removed) = rules.removed_breaks
+                    && run_depth > 0
+                    && BREAK_ELEMENTS.contains(&name)
+                {
+                    if removed.contains(&break_count) {
+                        if empty {
+                            edits.push((before, after, String::new()));
+                        } else {
+                            open_break = Some(before);
+                        }
+                    }
+                    break_count += 1;
+                }
                 let kind = if rules.fragments.contains(&name) {
                     fragment += 1;
                     Some(Kind::Fragment(fragment - 1))
@@ -253,6 +296,15 @@ fn rewrite(part: &str, xml: &str, rules: &Rules) -> Result<Option<String>> {
                 }
             }
             Event::End(e) => {
+                let name = e.name();
+                if name.as_ref() == "w:r" {
+                    run_depth = run_depth.saturating_sub(1);
+                }
+                if BREAK_ELEMENTS.contains(&name.as_ref())
+                    && let Some(start) = open_break.take()
+                {
+                    edits.push((start, after, String::new()));
+                }
                 if let Some(o) = open.take_if(|o| o.tag.name() == e.name()) {
                     let new = match o.kind {
                         Kind::Fragment(index) => rules

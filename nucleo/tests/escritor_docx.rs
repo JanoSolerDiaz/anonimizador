@@ -100,12 +100,6 @@ fn replace_entities(
         for (start, end, marker) in found {
             text.extend(&chars[at..start]);
             text.push_str(&marker);
-            // Los tabuladores y saltos no tienen fragmento: se quedan.
-            text.extend(
-                (start..end)
-                    .filter(|&c| segment.map[c].is_none())
-                    .map(|c| chars[c]),
-            );
             at = end;
             replacements.push(Replacement {
                 segment: index,
@@ -384,7 +378,7 @@ fn special_characters_are_escaped_in_the_output() {
 }
 
 #[test]
-fn a_replacement_over_a_tab_keeps_the_tab_and_writes_the_marker() {
+fn a_replacement_over_a_line_break_takes_the_break_with_it() {
     let document = DocxDocument::from_bytes(&original("es-01-contrato-arrendamiento")).unwrap();
     let index = segment_index(&document, "word/document.xml", "Domicilio:");
     let value = "Calle de la Paz 14, 3.º B 46003 Valencia";
@@ -401,10 +395,10 @@ fn a_replacement_over_a_tab_keeps_the_tab_and_writes_the_marker() {
         )
         .unwrap();
     let reread = DocxDocument::from_bytes(&output).unwrap();
-    // El salto de línea no tiene fragmento: se queda, como un espacio.
+    // El salto de línea de en medio se va con la dirección.
     assert_eq!(
         reread.segments()[index].text,
-        "Domicilio: [DIRECCION_POSTAL_0001] "
+        "Domicilio: [DIRECCION_POSTAL_0001]"
     );
 }
 

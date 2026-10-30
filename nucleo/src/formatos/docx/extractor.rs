@@ -12,6 +12,8 @@ use crate::{Error, Result};
 /// Elementos de `docProps/core.xml` que se analizan como segmentos.
 pub(super) const CORE_TEXT_FIELDS: [&str; 4] =
     ["dc:title", "dc:subject", "cp:keywords", "dc:description"];
+/// Tabuladores y saltos dentro de una carrera: un espacio en el texto.
+pub(super) const BREAK_ELEMENTS: [&str; 3] = ["w:tab", "w:br", "w:cr"];
 /// Metadatos de autor que se vacían.
 pub(super) const CORE_AUTHOR_FIELDS: [&str; 2] = ["dc:creator", "cp:lastModifiedBy"];
 pub(super) const APP_AUTHOR_FIELDS: [&str; 1] = ["Company"];
@@ -35,6 +37,7 @@ struct OpenParagraph {
     slot: usize,
     text: String,
     map: Vec<Option<FragmentPos>>,
+    breaks: Vec<(usize, usize)>,
     style_id: Option<String>,
     num_id: Option<String>,
     level: u8,
@@ -73,6 +76,8 @@ pub(super) fn extract_part(
     let mut tables: Vec<OpenTable> = Vec::new();
     let mut table_count = 0;
     let mut run_depth = 0usize;
+    // Tabuladores y saltos de las carreras, numerados como los fragmentos.
+    let mut break_count = 0usize;
     // Dentro de un cambio de formato de párrafo, el estilo es el antiguo.
     let mut old_properties_depth = 0usize;
     let mut object_depth = 0usize;
@@ -106,6 +111,7 @@ pub(super) fn extract_part(
                         slot: slots.len() - 1,
                         text: String::new(),
                         map: Vec::new(),
+                        breaks: Vec::new(),
                         style_id: None,
                         num_id: None,
                         level: 0,
@@ -149,9 +155,11 @@ pub(super) fn extract_part(
                 }
                 "w:tab" | "w:br" | "w:cr" if run_depth > 0 => {
                     if let Some(p) = paragraphs.last_mut() {
+                        p.breaks.push((p.map.len(), break_count));
                         p.text.push(' ');
                         p.map.push(None);
                     }
+                    break_count += 1;
                 }
                 "w:pPrChange" if !empty => old_properties_depth += 1,
                 "w:pStyle" if old_properties_depth == 0 => {
@@ -271,6 +279,7 @@ fn finish_paragraph(part: &str, p: OpenParagraph, styles: &Styles) -> Option<Seg
         style,
         cell: p.cell,
         map: p.map,
+        breaks: p.breaks,
     })
 }
 
@@ -302,6 +311,7 @@ pub(super) fn extract_core(part: &str, xml: &str, out: &mut Collected) -> Result
                 part: part.to_owned(),
                 style: ParagraphStyle::Metadata,
                 cell: None,
+                breaks: Vec::new(),
             });
         }
         fragments.push(text);
