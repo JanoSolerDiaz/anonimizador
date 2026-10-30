@@ -86,6 +86,15 @@ pub enum Error {
     #[error("El archivo no es un documento de Word válido: {0}.")]
     DocxInvalid(String),
 
+    #[error("El formato «{0}» no se admite; use DOCX, MD o TXT.")]
+    UnsupportedFormat(String),
+
+    #[error("Un archivo {from} no se puede convertir a {to}.")]
+    UnsupportedConversion {
+        from: &'static str,
+        to: &'static str,
+    },
+
     #[error("Error de lectura o escritura: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -122,6 +131,11 @@ mod tests {
             Error::InvalidReplacement("detalle".into()),
             Error::DocxProtected,
             Error::DocxInvalid("detalle".into()),
+            Error::UnsupportedFormat("rtf".into()),
+            Error::UnsupportedConversion {
+                from: "TXT",
+                to: "DOCX",
+            },
             Error::Io(std::io::Error::other("detalle")),
         ];
         for error in errors {

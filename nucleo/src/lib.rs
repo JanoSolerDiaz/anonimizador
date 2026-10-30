@@ -9,6 +9,7 @@ pub mod error;
 pub mod evaluacion;
 pub mod formatos;
 pub mod motor;
+pub mod operaciones;
 pub mod recursos;
 
 pub use error::{Error, Result};
