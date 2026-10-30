@@ -3,6 +3,8 @@
 //! almacén.
 
 pub mod anonimizar;
+pub mod desanonimizar;
+pub mod marcadores;
 
 use std::path::Path;
 
