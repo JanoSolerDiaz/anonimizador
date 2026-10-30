@@ -532,3 +532,65 @@ fn several_replacements_in_one_fragment_are_all_applied() {
     let reread = DocxDocument::from_bytes(&output).unwrap();
     assert_eq!(reread.segments()[0].text, "[P0] y [P1] viven con [P2]");
 }
+
+#[test]
+fn a_fragment_ending_in_a_space_gets_xml_space_preserve() {
+    let bytes = docx_with("<w:p><w:r><w:t>Nombre: X</w:t></w:r></w:p>", &[]);
+    let document = DocxDocument::from_bytes(&bytes).unwrap();
+    let output = document
+        .write(
+            &[Replacement {
+                segment: 0,
+                start: 8,
+                end: 9,
+                text: "Ana ".into(),
+            }],
+            &[],
+        )
+        .unwrap();
+    let xml = part(&output, "word/document.xml");
+    assert!(
+        xml.contains("<w:t xml:space=\"preserve\">Nombre: Ana </w:t>"),
+        "{xml}"
+    );
+}
+
+#[test]
+fn a_longer_literal_wins_over_one_it_contains() {
+    let literals = [
+        ("ferrer".to_owned(), "[A]".to_owned()),
+        (
+            "lucia.ferrer@correo-ejemplo.es".to_owned(),
+            "[EMAIL_0001]".to_owned(),
+        ),
+    ];
+    let output = DocxDocument::from_bytes(&original("es-01-contrato-arrendamiento"))
+        .unwrap()
+        .write(&[], &literals)
+        .unwrap();
+    let reread = DocxDocument::from_bytes(&output).unwrap();
+    assert_eq!(reread.external_links()[0].target, "mailto:[EMAIL_0001]");
+}
+
+#[test]
+fn an_empty_literal_changes_nothing() {
+    let bytes = original("es-01-contrato-arrendamiento");
+    let output = DocxDocument::from_bytes(&bytes)
+        .unwrap()
+        .write(&[], &[(String::new(), "[X]".to_owned())])
+        .unwrap();
+    for name in ["word/document.xml", "word/_rels/document.xml.rels"] {
+        assert_eq!(part(&output, name), part(&bytes, name), "{name}");
+    }
+}
+
+#[test]
+fn internal_relationships_never_get_literal_replacements() {
+    let bytes = original("es-01-contrato-arrendamiento");
+    let output = DocxDocument::from_bytes(&bytes)
+        .unwrap()
+        .write(&[], &[("styles.xml".to_owned(), "[X]".to_owned())])
+        .unwrap();
+    let rels = "word/_rels/document.xml.rels";
+    assert_eq!(part(&output, rels), part(&bytes, rels));
+}
