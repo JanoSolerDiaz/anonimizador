@@ -5,12 +5,13 @@
 //! comentarios) y convierte cada párrafo en un segmento. Un fragmento es el
 //! contenido de un `w:t` o un `w:delText`; se numeran por parte, en orden de
 //! aparición, y el mapa dice de qué fragmento y de qué posición dentro de él
-//! sale cada carácter del segmento. El escritor (Task 10) recorre la parte
-//! con el mismo criterio y sustituye el texto de los fragmentos.
+//! sale cada carácter del segmento. El escritor recorre la parte con el
+//! mismo criterio y sustituye el texto de los fragmentos.
 //!
 //! Los elementos se reconocen por su nombre con prefijo (`w:t`), que es el
 //! que escribe Word: `a:t`, por ejemplo, es texto de DrawingML y no entra.
 
+mod escritor;
 mod estilos;
 mod extractor;
 
@@ -107,7 +108,6 @@ struct PartText {
 /// DOCX leído: el archivo original y lo extraído de él.
 #[derive(Debug, Clone)]
 pub struct DocxDocument {
-    #[allow(dead_code)] // lo usa el escritor
     original: Vec<u8>,
     segments: Vec<Segment>,
     parts: Vec<PartText>,
@@ -211,16 +211,6 @@ impl DocxDocument {
 
     pub fn warnings(&self) -> Warnings {
         self.warnings
-    }
-
-    /// El DOCX con las sustituciones aplicadas sobre los segmentos y las
-    /// literales (`valor`, `nuevo`) en destinos de enlaces y códigos de campo.
-    pub fn write(
-        &self,
-        _replacements: &[super::Replacement],
-        _literals: &[(String, String)],
-    ) -> Result<Vec<u8>> {
-        Ok(self.original.clone())
     }
 }
 

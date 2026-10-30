@@ -100,6 +100,12 @@ fn replace_entities(
         for (start, end, marker) in found {
             text.extend(&chars[at..start]);
             text.push_str(&marker);
+            // Los tabuladores y saltos no tienen fragmento: se quedan.
+            text.extend(
+                (start..end)
+                    .filter(|&c| segment.map[c].is_none())
+                    .map(|c| chars[c]),
+            );
             at = end;
             replacements.push(Replacement {
                 segment: index,
@@ -256,7 +262,9 @@ fn a_marker_over_a_name_split_in_three_fragments_takes_the_first_format() {
     // El marcador queda en la carrera en negrita del primer fragmento; las
     // otras dos se quedan sin texto.
     assert!(
-        xml.contains(&format!("<w:rPr><w:b/></w:rPr><w:t>{marker}</w:t>")),
+        xml.contains(&format!(
+            "<w:rPr><w:b/></w:rPr><w:t xml:space=\"preserve\">{marker}</w:t>"
+        )),
         "{xml}"
     );
     assert!(

@@ -371,7 +371,7 @@ fn element_texts(part: &str, xml: &str, names: &[&str]) -> Result<Vec<(String, S
 }
 
 /// Añade a `text` el texto de un evento, con las entidades resueltas.
-fn append_text(text: &mut String, event: &Event<'_>) -> std::result::Result<(), ()> {
+pub(super) fn append_text(text: &mut String, event: &Event<'_>) -> std::result::Result<(), ()> {
     match event {
         Event::Text(e) => text.push_str(&e.xml10_content()),
         Event::CData(e) => text.push_str(&e.xml10_content()),
