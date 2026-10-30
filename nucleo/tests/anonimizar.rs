@@ -564,3 +564,37 @@ fn with_the_real_model_no_expected_value_is_left_in_the_corpus() {
         assert!(!record.markers.is_empty(), "{name}");
     }
 }
+
+#[test]
+fn markdown_cannot_become_docx_either() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = write_text(dir.path(), "nota.md", "# Hola\n");
+    let error = anonymize(
+        &input,
+        dir.path(),
+        &Fake::new(&[]),
+        &mut Store::new(),
+        &options(OutputFormat::Docx),
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "Un archivo MD no se puede convertir a DOCX."
+    );
+}
+
+#[test]
+fn the_extension_is_read_without_case() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = write_text(dir.path(), "NOTA.TXT", "Hola Ana López.\n");
+    let out = tempfile::tempdir().unwrap();
+    let summary = anonymize(
+        &input,
+        out.path(),
+        &Fake::new(&[("Ana López", "NOMBRE_PERSONA")]),
+        &mut Store::new(),
+        &options(OutputFormat::Text),
+    )
+    .unwrap();
+    assert_eq!(summary.output, out.path().join("nota_anonimizado.txt"));
+}
