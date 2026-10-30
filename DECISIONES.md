@@ -131,3 +131,11 @@ Un documento se borra el mismo día que indica su campo `caduca`: el ejemplo del
 ### También se vacían los autores de comentarios y del control de cambios
 
 Word guarda en `w:author` (y en los comentarios también `w:initials`) el nombre y las iniciales de quien escribió cada comentario y de quien hizo cada cambio con control de cambios (`w:ins`, `w:del` y los cambios de formato). Son datos personales que el PRD no menciona: solo pide vaciar `dc:creator`, `cp:lastModifiedBy` y `Company`. Jano aceptó el 2026-10-29 que el escritor DOCX vacíe también esos atributos en todas las partes que procesa. El corpus DOCX los recoge en el campo `autores_revision` de cada JSON.
+
+La lista de personas de `word/people.xml`, que Word moderno guarda con el nombre de cada revisor y a veces su correo (`w15:author` y `w15:userId`), se vacía por la misma razón.
+
+### MD y TXT desde DOCX: cuerpo y notas, con los cambios aceptados
+
+El PRD pide que el MD conserve títulos, listas y tablas, y que el TXT tenga un párrafo por línea, pero no dice qué partes del documento entran. Jano decidió el 2026-10-30 que entren el cuerpo y, al final, una sección «Notas» con las notas al pie y al final. Los encabezados, los pies de página, los comentarios y las propiedades del archivo se dejan fuera.
+
+El texto con control de cambios sale como si los cambios estuvieran aceptados: el texto borrado no aparece y el insertado sí. En la salida DOCX el texto borrado sigue ahí, y se anonimiza igual que el resto.
