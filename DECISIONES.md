@@ -139,3 +139,9 @@ La lista de personas de `word/people.xml`, que Word moderno guarda con el nombre
 El PRD pide que el MD conserve títulos, listas y tablas, y que el TXT tenga un párrafo por línea, pero no dice qué partes del documento entran. Jano decidió el 2026-10-30 que entren el cuerpo y, al final, una sección «Notas» con las notas al pie y al final. Los encabezados, los pies de página, los comentarios y las propiedades del archivo se dejan fuera.
 
 El texto con control de cambios sale como si los cambios estuvieran aceptados: el texto borrado no aparece y el insertado sí. En la salida DOCX el texto borrado sigue ahí, y se anonimiza igual que el resto.
+
+### Un tabulador o un salto dentro de un dato se va con el dato
+
+El PRD trata los tabuladores y los saltos de línea de Word como un espacio en el texto, sin entrada editable en el mapa. Si un dato los cruza, por ejemplo una dirección en dos líneas, el marcador ocupa el texto pero el salto se quedaba detrás. Al desanonimizar, el valor guardado (con un espacio donde estaba el salto) se sumaba al salto que seguía en el documento, y el texto no volvía igual.
+
+Desde el 2026-10-30, el escritor DOCX borra los tabuladores y saltos que quedan dentro de una sustitución. El documento anonimizado queda sin un salto suelto detrás del marcador, y la ida y vuelta devuelve exactamente el mismo texto. El precio es que, en el documento desanonimizado, esa dirección queda en una sola línea, con un espacio en lugar del salto. No es un cambio del PRD: los saltos siguen sin poder recibir texto, solo se borran.
