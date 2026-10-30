@@ -188,7 +188,8 @@ fn plan(
                     }
                 }
                 Lookup::Missing => {
-                    if !found.short && is_known_kind(&found.key) {
+                    // Una forma corta nunca es de un tipo de la tabla.
+                    if is_known_kind(&found.key) {
                         push_unique(&mut plan.report.missing, &found.key);
                     }
                 }

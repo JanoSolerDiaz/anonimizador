@@ -43,7 +43,7 @@ pub fn find_markers(text: &str) -> Vec<FoundMarker> {
 /// cual si no es un marcador.
 pub fn canonical(marker: &str) -> String {
     match find_markers(marker).as_slice() {
-        [only] if only.start == 0 && only.end == marker.chars().count() => only.key.clone(),
+        [only] => only.key.clone(),
         _ => marker.to_owned(),
     }
 }
@@ -69,10 +69,8 @@ fn marker_at(chars: &[char], start: usize) -> Option<FoundMarker> {
         return None;
     }
 
+    // Sin cifras al final, el número queda vacío y no se puede leer.
     let digits = name.len() - name.trim_end_matches(|c: char| c.is_ascii_digit()).len();
-    if digits == 0 {
-        return None;
-    }
     let (prefix, number) = name.split_at(name.len() - digits);
     let number: u32 = number.parse().ok()?;
     let prefix = prefix.to_ascii_uppercase();
