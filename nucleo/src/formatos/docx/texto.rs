@@ -132,7 +132,7 @@ fn markdown_blocks(paragraphs: &[Visible]) -> String {
         match paragraph.style {
             ParagraphStyle::ListItem { ordered, level } => {
                 let level = usize::from(level);
-                counters.truncate(level + 1);
+                // Los niveles más profundos se cierran y empiezan de nuevo.
                 counters.resize(level + 1, 0);
                 counters[level] += 1;
                 let sign = if ordered {
