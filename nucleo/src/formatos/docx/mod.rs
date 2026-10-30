@@ -14,6 +14,7 @@
 mod escritor;
 mod estilos;
 mod extractor;
+mod texto;
 
 use std::io::{Cursor, Read};
 
@@ -103,6 +104,8 @@ pub struct Warnings {
 struct PartText {
     name: String,
     fragments: Vec<String>,
+    /// Si cada fragmento es texto borrado con control de cambios.
+    deleted: Vec<bool>,
 }
 
 /// DOCX leído: el archivo original y lo extraído de él.
@@ -165,7 +168,11 @@ impl DocxDocument {
             parts: out
                 .parts
                 .into_iter()
-                .map(|(name, fragments)| PartText { name, fragments })
+                .map(|(name, fragments, deleted)| PartText {
+                    name,
+                    fragments,
+                    deleted,
+                })
                 .collect(),
             links: out.links,
             field_codes: out.field_codes,
@@ -211,14 +218,6 @@ impl DocxDocument {
 
     pub fn warnings(&self) -> Warnings {
         self.warnings
-    }
-
-    pub fn markdown(&self, _replacements: &[super::Replacement]) -> Result<String> {
-        Ok(String::new())
-    }
-
-    pub fn plain_text(&self, _replacements: &[super::Replacement]) -> Result<String> {
-        Ok(String::new())
     }
 }
 

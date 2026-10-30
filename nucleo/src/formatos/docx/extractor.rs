@@ -20,8 +20,9 @@ pub(super) const APP_AUTHOR_FIELDS: [&str; 1] = ["Company"];
 #[derive(Debug, Default)]
 pub(super) struct Collected {
     pub segments: Vec<Segment>,
-    /// Fragmentos de cada parte, en orden.
-    pub parts: Vec<(String, Vec<String>)>,
+    /// Fragmentos de cada parte, en orden, y si cada uno es texto borrado
+    /// con control de cambios.
+    pub parts: Vec<(String, Vec<String>, Vec<bool>)>,
     pub links: Vec<ExternalLink>,
     pub field_codes: Vec<FieldCode>,
     pub author_metadata: Vec<String>,
@@ -64,6 +65,7 @@ pub(super) fn extract_part(
 ) -> Result<()> {
     let mut reader = Reader::from_str(xml);
     let mut fragments: Vec<String> = Vec::new();
+    let mut deleted: Vec<bool> = Vec::new();
     // Un hueco por párrafo, en orden de apertura: un cuadro de texto se
     // cierra antes que el párrafo que lo contiene, pero va después.
     let mut slots: Vec<Option<Segment>> = Vec::new();
@@ -131,6 +133,7 @@ pub(super) fn extract_part(
                 }
                 "w:r" if !empty => run_depth += 1,
                 "w:t" | "w:delText" => {
+                    deleted.push(e.name().as_ref() == "w:delText");
                     if empty {
                         add_fragment(String::new(), &mut fragments, &mut paragraphs);
                     } else {
@@ -220,7 +223,7 @@ pub(super) fn extract_part(
         }
     }
     out.segments.extend(slots.into_iter().flatten());
-    out.parts.push((part.to_owned(), fragments));
+    out.parts.push((part.to_owned(), fragments, deleted));
     Ok(())
 }
 
@@ -303,7 +306,8 @@ pub(super) fn extract_core(part: &str, xml: &str, out: &mut Collected) -> Result
         }
         fragments.push(text);
     }
-    out.parts.push((part.to_owned(), fragments));
+    let deleted = vec![false; fragments.len()];
+    out.parts.push((part.to_owned(), fragments, deleted));
     Ok(())
 }
 
