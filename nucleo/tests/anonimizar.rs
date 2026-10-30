@@ -225,7 +225,7 @@ fn the_store_records_the_document_and_its_entries() {
     let lucia = store.entry_for_marker("[NOMBRE_PERSONA_0001]").unwrap();
     assert_eq!(lucia.value(), "Lucía Ferrer Ibáñez");
     assert_eq!(lucia.model_label(), "ETIQUETA_NOMBRE_PERSONA");
-    assert_eq!(lucia.documents(), [record.id.clone()]);
+    assert_eq!(lucia.documents(), std::slice::from_ref(&record.id));
     for marker in &record.markers {
         assert!(store.entry_for_marker(marker).is_some(), "{marker}");
     }
