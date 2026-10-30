@@ -347,3 +347,37 @@ fn invalid_replacements_are_rejected() {
         Err(Error::InvalidReplacement(_))
     ));
 }
+
+#[test]
+fn a_sublist_starts_again_at_one_under_each_item() {
+    let body = [
+        list_item("Primero", 2, 0),
+        list_item("Detalle a", 2, 1),
+        list_item("Detalle b", 2, 1),
+        list_item("Segundo", 2, 0),
+        list_item("Detalle c", 2, 1),
+    ]
+    .concat();
+    let document = docx_with(&body, &[("word/numbering.xml", NUMBERING)]);
+    assert_eq!(
+        document.markdown(&[]).unwrap(),
+        "1. Primero\n    1. Detalle a\n    2. Detalle b\n2. Segundo\n    1. Detalle c\n"
+    );
+}
+
+#[test]
+fn two_tables_with_an_empty_paragraph_between_stay_apart() {
+    let table = |a: &str, b: &str| {
+        format!(
+            "<w:tbl><w:tr><w:tc>{}</w:tc></w:tr><w:tr><w:tc>{}</w:tc></w:tr></w:tbl>",
+            paragraph(a),
+            paragraph(b)
+        )
+    };
+    let body = format!("{}<w:p/>{}", table("A", "1"), table("B", "2"));
+    let document = docx_with(&body, &[]);
+    assert_eq!(
+        document.markdown(&[]).unwrap(),
+        "| A |\n| --- |\n| 1 |\n\n| B |\n| --- |\n| 2 |\n"
+    );
+}
