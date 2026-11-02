@@ -381,3 +381,59 @@ por párrafos. **No cumple el objetivo del PRD de 5 s para diez páginas**, ni c
 4 hilos. Jano decidió (2026-10-28) mantenerlo por defecto y aceptar ese tiempo,
 porque es la forma que no deja a la vista ningún dato de los que más importan.
 Está en `DECISIONES.md`.
+
+### Un DOCX de diez páginas de principio a fin (2026-11-02)
+
+`nucleo/tests/rendimiento.rs` convierte el texto de diez páginas en un DOCX
+(304 párrafos, cada frase en su propio fragmento de texto y una de cada tres en
+negrita, como deja Word un documento editado) y mide, con el modelo ya
+cargado y la lectura `ambos`, lo que tarda `anonymize` entero: leer el DOCX,
+detectar, asignar marcadores en el almacén, sustituir y escribir la salida.
+Después desanonimiza la salida y comprueba que vuelve el texto original.
+
+```bash
+cargo test --release -p nucleo --test rendimiento -- --include-ignored --nocapture --test-threads=1
+```
+
+| Medida | 2 hilos | 4 hilos |
+|---|---|---|
+| Solo el modelo, sobre los mismos párrafos | 18,8 a 26,9 s | 10,4 a 12,4 s |
+| Anonimizar el DOCX entero, justo después | 23,1 a 29,3 s | 10,5 a 11,9 s |
+| Desanonimizar el DOCX | 0,01 s | 0,01 s |
+| Todo menos el modelo (detector falso que tapa los 304 párrafos) | 0,01 s | 0,01 s |
+
+Lo firme es la comparación: **casi todo el tiempo es del modelo**. Leer el
+DOCX, el almacén y escribir la salida cuestan una centésima de segundo, aunque
+se sustituyan todos los párrafos; desanonimizar no usa el modelo y es
+inmediato. La diferencia entre las dos primeras filas con 2 hilos está dentro
+de lo que varía una medida a otra en esta máquina.
+
+Las cifras absolutas no son comparables con las de la tabla anterior. El mismo
+día, la misma lectura de referencia (`cli entidades` sobre el texto, 2 hilos)
+dio 9,4 s por la mañana y entre 18,6 y 23,2 s por la tarde, con el portátil
+enchufado, en el plan de energía «Equilibrado» y sin otros programas usando el
+procesador (entre el 3 y el 11 %). Diez minutos de reposo no la devolvieron a
+la cifra de la mañana. Sigue en pie lo de la tabla anterior: con `ambos`, diez
+páginas **no bajan de 5 s** en este portátil, y queda medirlo en el equipo de
+referencia en el hito 6.
+
+### Memoria durante un lote
+
+Pico de memoria del proceso `cli anonimizar` con un lote de cinco archivos (el
+texto de diez páginas y los cuatro DOCX del corpus), 4 hilos: **749 MB**, por
+debajo del 1 GB del PRD. Es lo mismo que pesaba `cli entidades` en el hito 2
+(unos 740 MB): casi todo es el modelo, y el lote no la hace crecer.
+
+### Almacén con 1.000 documentos
+
+El almacén se reescribe entero cada vez que se guarda. La misma prueba
+anonimiza 1.000 documentos de 30 datos distintos cada uno (30.000 entradas) y
+mide el archivo cifrado resultante.
+
+| Tamaño | Guardar | Abrir | Anonimizar un documento más |
+|---|---|---|---|
+| 9,2 MB | 0,03 a 0,09 s | 0,05 a 0,20 s | 0,01 a 0,04 s |
+
+Con mil documentos, guardar y abrir el almacén sigue siendo inapreciable al
+lado del modelo, y añadir un documento no se vuelve más lento con el almacén
+lleno. No hace falta cambiar a un almacén que se escriba por partes.
