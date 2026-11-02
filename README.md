@@ -73,7 +73,17 @@ cargo run --release -p nucleo --bin cli -- almacen listar | exportar <documento>
 
 `anonimizar` admite `--formato docx|md|txt`, `--no-sustituir` y las opciones del motor. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
 
-El almacén está cifrado y vive en la carpeta de datos del usuario (`%APPDATA%\anonimizador\almacen.anon` en Windows, `~/Library/Application Support/anonimizador/almacen.anon` en Mac); su clave está en el almacén de credenciales del sistema. Todas las órdenes aceptan `--almacen <archivo>` para usar otro. **La CLI no debe usarse con la app abierta**: las dos escriben en el mismo almacén.
+### Cómo funciona el almacén
+
+El almacén guarda qué dato original hay detrás de cada marcador. Es un único archivo cifrado con AES-256-GCM en la carpeta de datos del usuario (`%APPDATA%\anonimizador\almacen.anon` en Windows, `~/Library/Application Support/anonimizador/almacen.anon` en Mac). La clave se genera la primera vez y se guarda en el almacén de credenciales del sistema (Administrador de credenciales de Windows, Llavero de Mac), así que solo ese usuario, en ese equipo, puede leerlo. Todas las órdenes aceptan `--almacen <archivo>` para usar otro.
+
+- **Marcadores compartidos.** El mismo dato recibe siempre el mismo marcador en todos los documentos, y la numeración de cada tipo no vuelve atrás nunca, ni al borrar documentos.
+- **Caducidad.** Cada documento caduca a los 90 días. Cada vez que se abre el almacén se borran los documentos caducados y los datos que ya no usa ningún documento; `almacen purgar` hace solo eso.
+- **Olvidar y vaciar.** `almacen olvidar <documento>` borra un documento y los datos que no usa ningún otro. `almacen vaciar` lo borra todo y pide `--confirmar`.
+- **Diccionarios.** `almacen exportar` saca a un JSON **sin cifrar** los datos de un documento, para que otra persona pueda desanonimizarlo. `almacen importar` guarda el diccionario recibido aparte de los datos propios. Si un marcador tiene valores distintos en los dos sitios, `desanonimizar` no elige: pide `--fuente`.
+- **Escritura segura.** Cuando una orden cambia el almacén, al terminar lo reescribe entero en un archivo temporal que se renombra al final, y se conserva una copia `.bak` del anterior hasta que la nueva escritura termina. Si el archivo no se puede descifrar (otra clave, archivo alterado), la orden se detiene con un error y no lo borra.
+
+**La CLI no debe usarse con la app abierta**: las dos escriben en el mismo almacén.
 
 ## Pruebas
 
@@ -83,6 +93,9 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace -- --include-ignored   # las ignoradas necesitan recursos/
 
+# Tiempos de un DOCX de diez páginas y de un almacén con 1.000 documentos
+cargo test --release -p nucleo --test rendimiento -- --include-ignored --nocapture --test-threads=1
+
 # Scripts de descarga y garantía "sin red" por plataforma
 node --test "scripts/test/*.test.mjs"
 
@@ -90,6 +103,10 @@ node --test "scripts/test/*.test.mjs"
 cd app && npm run check && npm test && npm run build
 cd app && npm run tauri build -- --debug --no-bundle
 ```
+
+Si las pruebas que cargan el modelo fallan con `bad allocation`, es que varias lo han cargado a la vez y no ha quedado memoria: repítelas con `-- --test-threads=1`.
+
+Las pruebas de la CLI no tocan el almacén de credenciales del sistema: dan la clave en la variable `ANONIMIZADOR_CLAVE_PRUEBA` (64 cifras hexadecimales), que solo aceptan las compilaciones de depuración.
 
 Cobertura:
 

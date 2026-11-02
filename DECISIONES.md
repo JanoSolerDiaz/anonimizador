@@ -122,6 +122,13 @@ aceptarlo. Las otras lecturas siguen disponibles en la CLI con
 `--contexto parrafo|documento` para medir. Habrá que confirmar los tiempos en
 un portátil de referencia en el hito 6.
 
+Medido de principio a fin el 2026-11-02 con un DOCX de diez páginas, anonimizar
+tarda lo mismo que el modelo: leer el Word, el almacén y escribir la salida
+suman una centésima de segundo. El mismo portátil dio ese día entre 9 y 29 s
+con 2 hilos según el momento, así que las cifras de este equipo solo sirven
+para comparar medidas tomadas una junto a otra. Está en
+`tests/informe-deteccion.md`.
+
 ### Borrar del almacén no reinicia la numeración de los marcadores
 
 Caducar, olvidar un documento y «Vaciar todo» borran documentos y entradas, pero los contadores de cada tipo no bajan nunca. Un documento anonimizado antes puede seguir circulando con `[NOMBRE_PERSONA_0003]`; si ese número se diera después a otra persona, al desanonimizar el documento viejo con el almacén nuevo saldría un nombre equivocado sin ningún aviso. Con la numeración intacta, el marcador viejo aparece como «no está en el almacén», que es lo correcto. Es una interpretación de «Vaciar todo», no un cambio del PRD.
@@ -145,3 +152,13 @@ El texto con control de cambios sale como si los cambios estuvieran aceptados: e
 El PRD trata los tabuladores y los saltos de línea de Word como un espacio en el texto, sin entrada editable en el mapa. Si un dato los cruza, por ejemplo una dirección en dos líneas, el marcador ocupa el texto pero el salto se quedaba detrás. Al desanonimizar, el valor guardado (con un espacio donde estaba el salto) se sumaba al salto que seguía en el documento, y el texto no volvía igual.
 
 Desde el 2026-10-30, el escritor DOCX borra los tabuladores y saltos que quedan dentro de una sustitución. El documento anonimizado queda sin un salto suelto detrás del marcador, y la ida y vuelta devuelve exactamente el mismo texto. El precio es que, en el documento desanonimizado, esa dirección queda en una sola línea, con un espacio en lugar del salto. No es un cambio del PRD: los saltos siguen sin poder recibir texto, solo se borran.
+
+### Los logs llevan un identificador del documento, no su nombre
+
+El PRD dice que los logs registran nombres de archivo. El nombre de un archivo puede ser en sí un dato personal («Contrato Marta Lozano.docx»), y la misma regla del PRD prohíbe que un log lleve texto del documento. Por eso los eventos de anonimizar y desanonimizar llevan el identificador aleatorio del documento en el almacén (un UUID), el formato y los recuentos, pero no el nombre. Es más estricto que el PRD. Quien necesite saber qué archivo era lo encuentra con `cli almacen listar`, que sí muestra los nombres pero nunca los valores. `nucleo/tests/logs.rs` comprueba que ningún evento lleva texto de los documentos ni valores del almacén.
+
+### Clave de prueba solo en las compilaciones de depuración
+
+Las pruebas de la CLI no pueden usar el almacén de credenciales del sistema: dejarían claves en el equipo de quien las pase y fallarían en una máquina sin él. Las compilaciones de depuración aceptan la clave del almacén en la variable `ANONIMIZADOR_CLAVE_PRUEBA` (64 cifras hexadecimales). Las de `--release`, que son las que se entregan, la ignoran y usan siempre el almacén de credenciales, así que nadie puede abrir el almacén de un usuario poniendo una variable.
+
+En Linux, que solo se usa para desarrollar, el almacén va en `$XDG_DATA_HOME` o en `~/.local/share`.

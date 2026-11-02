@@ -177,14 +177,17 @@ Cada tarea con RED y GREEN en commits, y repaso con fallos provocados al final, 
   - `cli almacen listar | exportar <documento> | importar <archivo> | olvidar <documento> | vaciar | purgar`.
   - Un error en un archivo no detiene el resto del lote. La clave sale del almacén de credenciales del sistema. Para que las pruebas no lo toquen, las compilaciones de depuración aceptan una variable de entorno con una clave de prueba; las de `--release` la ignoran.
 - **Validate**: pruebas de la CLI como las del hito 2; un lote con un archivo corrupto y otro protegido procesa los demás y explica los dos errores.
+- **Hecha (2026-11-02).** La CLI pasa a la carpeta `nucleo/src/bin/cli/` (`main.rs`, `operaciones.rs`, `almacen.rs`). Sin `--almacen`, el almacén va en la carpeta de datos del usuario. El modelo solo se carga si algún archivo del lote llega a la detección.
 
 ### Task 15: Pruebas de aceptación, rendimiento y logs
 - **Action**: Repasar las pruebas automáticas del PRD que tocan a este hito y medir un DOCX de unas 10 páginas frente al objetivo de 5 s. La prueba de logs se amplía a anonimizar y desanonimizar: ningún evento contiene texto ni valores del almacén.
 - **Validate**: validación completa; tiempo del DOCX de 10 páginas anotado en el informe.
+- **Hecha (2026-11-02).** De las 13 pruebas del PRD de este hito, faltaban tres comprobaciones y se añadieron: todas las partes del DOCX de salida con el XML bien formado, el mismo marcador para un dato compartido por dos archivos distintos, y los logs de anonimizar y desanonimizar sin texto ni valores del almacén (se comprobó metiendo a propósito un dato en un evento). `nucleo/tests/rendimiento.rs` mide el DOCX de diez páginas de principio a fin: todo el tiempo es del modelo, el resto suma 0,01 s. Lote de cinco archivos: 749 MB de memoria. Almacén con 1.000 documentos: 9,2 MB y menos de 0,2 s para guardarlo o abrirlo. Cifras en `tests/informe-deteccion.md`. Cobertura: 83,6 % de líneas en `almacen/archivo.rs`, el módulo más bajo; 95,5 % en todo `nucleo`.
 
 ### Task 16: Documentación
 - **Action**: README con las órdenes nuevas y cómo funciona el almacén; DECISIONES con lo que cambie respecto al PRD; cierre del plan.
 - **Validate**: validación completa.
+- **Hecha (2026-11-02).** README con el funcionamiento del almacén, las medidas de rendimiento y la clave de prueba. DECISIONES con los logs sin nombres de archivo, la clave de prueba y los tiempos medidos de principio a fin.
 
 ## Validation
 
@@ -219,12 +222,14 @@ Las tres se resolvieron como se proponía:
 
 ## Acceptance
 
-- [ ] All tasks complete, cada una con RED y GREEN en commits
+- [x] All tasks complete, cada una con RED y GREEN en commits (la Task 15 solo añade pruebas sobre lo ya hecho, que pasaron a la primera)
 - [x] El motor analiza los párrafos con el contexto de sus vecinos y el informe de detección recoge la mejora medida
-- [ ] Pruebas automáticas del PRD de este hito en verde: marcadores entre documentos, texto mezclado, DOCX ida y vuelta, XML válido, metadatos vacíos, contraseña, desanonimización tolerante, almacén ilegible en disco y con otra clave, caducidad, escritura interrumpida, conflicto al importar, nombres de salida y logs sin datos
-- [ ] `cli anonimizar` y `cli desanonimizar` funcionan con DOCX, MD, TXT y texto pegado
-- [ ] Jano abre en Word los DOCX anonimizados del corpus y no piden reparación
-- [ ] DOCX de 10 páginas en menos de 5 s (modelo ya cargado)
-- [ ] Sin crates con acceso a red (la prueba de dependencias sigue en verde)
-- [ ] Cobertura ≥ 80 % en `almacen`, `formatos` y `operaciones`
-- [ ] Patterns mirrored, not reinvented
+- [x] Pruebas automáticas del PRD de este hito en verde: marcadores entre documentos, texto mezclado, DOCX ida y vuelta, XML válido, metadatos vacíos, contraseña, desanonimización tolerante, almacén ilegible en disco y con otra clave, caducidad, escritura interrumpida, conflicto al importar, nombres de salida y logs sin datos
+- [x] `cli anonimizar` y `cli desanonimizar` funcionan con DOCX, MD, TXT y texto pegado
+- [ ] Jano abre en Word los DOCX anonimizados del corpus y no piden reparación — **pendiente de Jano**; los cuatro anonimizados y sus desanonimizados se prepararon el 2026-11-02
+- [ ] DOCX de 10 páginas en menos de 5 s (modelo ya cargado) — **no se cumple** con la lectura doble; Jano lo aceptó el 2026-10-28 (DECISIONES). Se confirma en el equipo de referencia en el hito 6
+- [x] Sin crates con acceso a red (la prueba de dependencias sigue en verde)
+- [x] Cobertura ≥ 80 % en `almacen`, `formatos` y `operaciones`
+- [x] Patterns mirrored, not reinvented
+
+**Pregunta abierta (2026-11-02).** El PRD pone como ejemplo `contrato-cliente_anonimizado.docx` → `contrato-cliente_desanonimizado.docx` y `contrato-cliente_diccionario.json`. Hoy la descripción se saca del archivo que se recibe, así que desanonimizar `contrato-cliente_anonimizado.docx` da `contrato-cliente-anonimizado_desanonimizado.docx`, y exportar su diccionario, `contrato-cliente-anonimizado_diccionario.json`. Las pruebas esperan esos nombres. Pendiente de que Jano elija.
