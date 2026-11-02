@@ -6,6 +6,7 @@
 //! [`Replacement`]. Los escritores solo saben aplicar sustituciones.
 
 pub mod docx;
+pub mod ooxml;
 pub mod pdf;
 pub mod salida;
 pub mod texto;

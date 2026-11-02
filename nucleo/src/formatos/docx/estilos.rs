@@ -8,8 +8,9 @@ use std::collections::HashMap;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
-use super::extractor::{attribute, xml_error};
+use super::extractor::xml_error;
 use crate::Result;
+use crate::formatos::ooxml::attribute;
 
 #[derive(Debug, Default)]
 pub(super) struct Styles {

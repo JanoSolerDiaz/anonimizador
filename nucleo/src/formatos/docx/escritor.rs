@@ -4,55 +4,19 @@
 //! serializar el resto. Las partes sin cambios se copian del ZIP tal cual.
 
 use std::collections::{HashMap, HashSet};
-use std::io::{Cursor, Write};
 
-use quick_xml::escape::partial_escape;
-use quick_xml::events::{BytesStart, Event};
-use quick_xml::{Reader, Writer};
-
-use super::extractor::{
-    APP_AUTHOR_FIELDS, BREAK_ELEMENTS, CORE_AUTHOR_FIELDS, CORE_TEXT_FIELDS, append_text,
-    attribute, xml_error,
+use super::extractor::BREAK_ELEMENTS;
+use super::{DocxDocument, FragmentPos, is_word_rels, text_parts};
+use crate::formatos::ooxml::reescritura::{Rules, rewrite, sorted_literals, write_package};
+use crate::formatos::ooxml::{
+    APP_AUTHOR_FIELDS, APP_PART, CORE_AUTHOR_FIELDS, CORE_PART, CORE_TEXT_FIELDS, CUSTOM_PART,
+    Office, PROPERTY_TEXTS,
 };
-use super::{APP_PART, CORE_PART, DocxDocument, FragmentPos, is_word_rels, read_part, text_parts};
 use crate::formatos::{Replacement, order_for_writing};
 use crate::{Error, Result};
 
 /// Parte con personas que han comentado o revisado, a veces con su correo.
 const PEOPLE_PART: &str = "word/people.xml";
-
-/// Qué se cambia en una parte.
-#[derive(Default)]
-struct Rules<'a> {
-    /// Elementos cuyo texto es un fragmento, numerados en orden.
-    fragments: &'a [&'a str],
-    /// Texto nuevo de los fragmentos que cambian.
-    new_fragments: Option<&'a HashMap<usize, String>>,
-    /// Tabuladores y saltos que se borran, numerados como en el extractor.
-    removed_breaks: Option<&'a HashSet<usize>>,
-    /// Si los fragmentos con un espacio en un extremo necesitan
-    /// `xml:space="preserve"`.
-    preserve_space: bool,
-    /// Elementos cuyo texto se vacía.
-    blank: &'a [&'a str],
-    /// Elementos cuyo texto recibe las sustituciones literales.
-    literal: &'a [&'a str],
-    /// Atributos que se vacían.
-    blank_attributes: &'a [&'a str],
-    /// Si el destino de los enlaces externos recibe las sustituciones
-    /// literales.
-    link_targets: bool,
-    literals: &'a [&'a (String, String)],
-}
-
-/// Elemento con texto abierto mientras se recorre.
-struct Open<'x> {
-    kind: Kind,
-    tag: BytesStart<'x>,
-    /// Bytes de la etiqueta de apertura.
-    tag_range: (usize, usize),
-    text: String,
-}
 
 /// Lo que cambian las sustituciones en cada parte.
 #[derive(Default)]
@@ -61,12 +25,6 @@ struct Changes<'a> {
     fragments: HashMap<&'a str, HashMap<usize, String>>,
     /// Tabuladores y saltos cubiertos por una sustitución.
     breaks: HashMap<&'a str, HashSet<usize>>,
-}
-
-enum Kind {
-    Fragment(usize),
-    Blank,
-    Literal,
 }
 
 impl DocxDocument {
@@ -80,31 +38,18 @@ impl DocxDocument {
         literals: &[(String, String)],
     ) -> Result<Vec<u8>> {
         let changes = self.apply(replacements)?;
-        // Las largas primero, para que una que contenga a otra no se quede a
-        // medias.
-        let mut literals: Vec<&(String, String)> = literals
-            .iter()
-            .filter(|(from, _)| !from.is_empty())
-            .collect();
-        literals.sort_by_key(|(from, _)| std::cmp::Reverse(from.len()));
-
-        let mut archive = zip::ZipArchive::new(Cursor::new(&self.original[..]))
-            .map_err(|_| Error::DocxInvalid("no es un archivo DOCX".into()))?;
-        let names: Vec<String> = archive
-            .file_names()
-            .map(|name| name.map(|n| n.into_owned()))
-            .collect::<std::result::Result<_, _>>()
-            .map_err(|_| Error::DocxInvalid("no es un archivo DOCX".into()))?;
+        let literals = sorted_literals(literals);
+        let names: Vec<String> = self.parts_in_package()?;
         let texts = text_parts(&names);
         let none = HashMap::new();
-
-        let mut output = zip::ZipWriter::new(Cursor::new(Vec::new()));
-        for (index, name) in names.iter().enumerate() {
-            let rules = if texts.contains(name) {
+        let rules_for = |name: &str| -> Option<Rules> {
+            if texts.iter().any(|t| t == name) {
                 Some(Rules {
                     fragments: &["w:t", "w:delText"],
-                    new_fragments: Some(changes.fragments.get(name.as_str()).unwrap_or(&none)),
-                    removed_breaks: changes.breaks.get(name.as_str()),
+                    new_fragments: Some(changes.fragments.get(name).unwrap_or(&none)),
+                    removed_breaks: changes.breaks.get(name),
+                    breaks: &BREAK_ELEMENTS,
+                    break_run: Some("w:r"),
                     preserve_space: true,
                     literal: &["w:instrText", "w:delInstrText"],
                     blank_attributes: &["w:author", "w:initials"],
@@ -114,13 +59,15 @@ impl DocxDocument {
             } else if name == CORE_PART {
                 Some(Rules {
                     fragments: &CORE_TEXT_FIELDS,
-                    new_fragments: Some(changes.fragments.get(name.as_str()).unwrap_or(&none)),
+                    new_fragments: Some(changes.fragments.get(name).unwrap_or(&none)),
                     blank: &CORE_AUTHOR_FIELDS,
                     ..Rules::default()
                 })
-            } else if name == APP_PART {
+            } else if name == APP_PART || name == CUSTOM_PART {
                 Some(Rules {
                     blank: &APP_AUTHOR_FIELDS,
+                    literal: &PROPERTY_TEXTS,
+                    literals: &literals,
                     ..Rules::default()
                 })
             } else if is_word_rels(name) {
@@ -136,33 +83,22 @@ impl DocxDocument {
                 })
             } else {
                 None
-            };
-            let rewritten = match rules {
-                Some(rules) => match read_part(&mut archive, name)? {
-                    Some(xml) => rewrite(name, &xml, &rules)?,
-                    None => None,
-                },
-                None => None,
-            };
-            let file = archive
-                .by_index_raw(index)
-                .map_err(|_| Error::DocxInvalid(format!("no se puede leer {name}")))?;
-            let written = match rewritten {
-                Some(xml) => {
-                    let options = file.options();
-                    drop(file);
-                    output
-                        .start_file(name.as_str(), options)
-                        .and_then(|()| Ok(output.write_all(xml.as_bytes())?))
-                }
-                None => output.raw_copy_file(file),
-            };
-            written.map_err(|_| Error::DocxInvalid(format!("no se puede escribir {name}")))?;
-        }
-        output
-            .finish()
-            .map(|cursor| cursor.into_inner())
-            .map_err(|_| Error::DocxInvalid("no se puede escribir el DOCX".into()))
+            }
+        };
+        write_package(
+            &self.original,
+            Office::Word,
+            |name| rules_for(name).is_some(),
+            |name, xml| match rules_for(name) {
+                Some(rules) => rewrite(Office::Word, name, xml, &rules),
+                None => Ok(None),
+            },
+        )
+    }
+
+    fn parts_in_package(&self) -> Result<Vec<String>> {
+        let package = crate::formatos::ooxml::Package::open(&self.original, Office::Word)?;
+        Ok(package.names().to_vec())
     }
 
     /// Texto nuevo de cada fragmento que cambia, por parte. El marcador va
@@ -226,193 +162,4 @@ impl DocxDocument {
             .collect();
         Ok(Changes { fragments, breaks })
     }
-}
-
-/// La parte con los cambios de `rules`, o `None` si no cambia nada.
-fn rewrite(part: &str, xml: &str, rules: &Rules) -> Result<Option<String>> {
-    let mut reader = Reader::from_str(xml);
-    // Bytes que se cambian: inicio, fin y texto nuevo, sin solaparse.
-    let mut edits: Vec<(usize, usize, String)> = Vec::new();
-    let mut fragment = 0usize;
-    let mut open: Option<Open> = None;
-    let mut run_depth = 0usize;
-    let mut break_count = 0usize;
-    // Inicio de un salto escrito con apertura y cierre que se borra.
-    let mut open_break: Option<usize> = None;
-    loop {
-        let before = reader.buffer_position() as usize;
-        let event = reader.read_event().map_err(|_| xml_error(part, &reader))?;
-        let after = reader.buffer_position() as usize;
-        let empty = matches!(event, Event::Empty(_));
-        match event {
-            Event::Start(e) | Event::Empty(e) => {
-                let name = e.name();
-                let name = name.as_ref();
-                if name == "w:r" && !empty {
-                    run_depth += 1;
-                }
-                if let Some(removed) = rules.removed_breaks
-                    && run_depth > 0
-                    && BREAK_ELEMENTS.contains(&name)
-                {
-                    if removed.contains(&break_count) {
-                        if empty {
-                            edits.push((before, after, String::new()));
-                        } else {
-                            open_break = Some(before);
-                        }
-                    }
-                    break_count += 1;
-                }
-                let kind = if rules.fragments.contains(&name) {
-                    fragment += 1;
-                    Some(Kind::Fragment(fragment - 1))
-                } else if rules.blank.contains(&name) {
-                    Some(Kind::Blank)
-                } else if rules.literal.contains(&name) {
-                    Some(Kind::Literal)
-                } else {
-                    None
-                };
-                if let Some(tag) = changed_attributes(&e, rules, empty)? {
-                    edits.push((before, after, tag));
-                }
-                // Un elemento vacío no tiene fragmento con caracteres: no
-                // puede cambiar.
-                if let Some(kind) = kind
-                    && !empty
-                {
-                    open = Some(Open {
-                        kind,
-                        tag: e,
-                        tag_range: (before, after),
-                        text: String::new(),
-                    });
-                }
-            }
-            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_) => {
-                if let Some(o) = &mut open {
-                    append_text(&mut o.text, &event).map_err(|_| xml_error(part, &reader))?;
-                }
-            }
-            Event::End(e) => {
-                let name = e.name();
-                if name.as_ref() == "w:r" {
-                    run_depth = run_depth.saturating_sub(1);
-                }
-                if BREAK_ELEMENTS.contains(&name.as_ref())
-                    && let Some(start) = open_break.take()
-                {
-                    edits.push((start, after, String::new()));
-                }
-                if let Some(o) = open.take_if(|o| o.tag.name() == e.name()) {
-                    let new = match o.kind {
-                        Kind::Fragment(index) => rules
-                            .new_fragments
-                            .and_then(|fragments| fragments.get(&index))
-                            .cloned(),
-                        Kind::Blank => (!o.text.is_empty()).then(String::new),
-                        Kind::Literal => {
-                            let new = apply_literals(&o.text, rules.literals);
-                            (new != o.text).then_some(new)
-                        }
-                    };
-                    if let Some(new) = new {
-                        let at_edge = new.starts_with(char::is_whitespace)
-                            || new.ends_with(char::is_whitespace);
-                        if rules.preserve_space
-                            && matches!(o.kind, Kind::Fragment(_))
-                            && at_edge
-                            && attribute(&o.tag, "xml:space").as_deref() != Some("preserve")
-                        {
-                            let tag = rebuild(&o.tag, &[("xml:space", "preserve")], false)?;
-                            edits.push((o.tag_range.0, o.tag_range.1, tag));
-                        }
-                        edits.push((o.tag_range.1, before, partial_escape(&new).into_owned()));
-                    }
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-    }
-    if edits.is_empty() {
-        return Ok(None);
-    }
-    edits.sort_by_key(|edit| edit.0);
-    let mut result = String::with_capacity(xml.len());
-    let mut at = 0;
-    for (start, end, text) in edits {
-        result.push_str(&xml[at..start]);
-        result.push_str(&text);
-        at = end;
-    }
-    result.push_str(&xml[at..]);
-    Ok(Some(result))
-}
-
-/// La etiqueta reescrita si alguno de sus atributos cambia.
-fn changed_attributes(e: &BytesStart, rules: &Rules, empty: bool) -> Result<Option<String>> {
-    let mut set: Vec<(&str, String)> = rules
-        .blank_attributes
-        .iter()
-        .filter(|key| attribute(e, key).is_some_and(|v| !v.is_empty()))
-        .map(|key| (*key, String::new()))
-        .collect();
-    if rules.link_targets
-        && e.name().as_ref() == "Relationship"
-        && attribute(e, "TargetMode").as_deref() == Some("External")
-        && let Some(target) = attribute(e, "Target")
-    {
-        let new = apply_literals(&target, rules.literals);
-        if new != target {
-            set.push(("Target", new));
-        }
-    }
-    if set.is_empty() {
-        return Ok(None);
-    }
-    let set: Vec<(&str, &str)> = set.iter().map(|(k, v)| (*k, v.as_str())).collect();
-    rebuild(e, &set, empty).map(Some)
-}
-
-/// La etiqueta con los atributos de `set` cambiados o añadidos.
-fn rebuild(e: &BytesStart, set: &[(&str, &str)], empty: bool) -> Result<String> {
-    let name = e.name();
-    let mut tag = BytesStart::new(name.as_ref());
-    // Los atributos quedan en el mismo orden; los nuevos, al final.
-    for a in e.attributes().flatten() {
-        let key = a.key.as_ref();
-        match set.iter().find(|(k, _)| *k == key) {
-            Some(changed) => tag.push_attribute(*changed),
-            None => {
-                let value = attribute(e, key).unwrap_or_default();
-                tag.push_attribute((key, value.as_str()));
-            }
-        }
-    }
-    for added in set.iter().filter(|(k, _)| attribute(e, k).is_none()) {
-        tag.push_attribute(*added);
-    }
-    let mut writer = Writer::new(Vec::new());
-    let event = if empty {
-        Event::Empty(tag)
-    } else {
-        Event::Start(tag)
-    };
-    writer
-        .write_event(event)
-        .map_err(|_| Error::DocxInvalid("no se puede reescribir una etiqueta".into()))?;
-    String::from_utf8(writer.into_inner())
-        .map_err(|_| Error::DocxInvalid("no se puede reescribir una etiqueta".into()))
-}
-
-fn apply_literals(text: &str, literals: &[&(String, String)]) -> String {
-    let mut result = text.to_owned();
-    for (from, to) in literals {
-        if result.contains(from.as_str()) {
-            result = result.replace(from.as_str(), to);
-        }
-    }
-    result
 }

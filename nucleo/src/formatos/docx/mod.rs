@@ -16,20 +16,11 @@ mod estilos;
 mod extractor;
 mod texto;
 
-use std::io::{Cursor, Read};
-
-use crate::{Error, Result};
-
-/// Firma de un archivo OLE, que es lo que es un DOCX cifrado con contraseña.
-const OLE_SIGNATURE: [u8; 8] = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
-
-/// Tamaño máximo de una parte descomprimida. Protege de un ZIP que se
-/// descomprime en gigas a partir de unos pocos bytes.
-const MAX_PART_BYTES: u64 = 256 * 1024 * 1024;
+use super::ooxml::{APP_PART, CORE_PART, Office, Package};
+pub use super::ooxml::{ExternalLink, Warnings};
+use crate::Result;
 
 const DOCUMENT_PART: &str = "word/document.xml";
-const CORE_PART: &str = "docProps/core.xml";
-const APP_PART: &str = "docProps/app.xml";
 
 /// Posición de un carácter en el original: fragmento de la parte y carácter
 /// dentro del fragmento.
@@ -78,14 +69,6 @@ pub struct Segment {
     pub breaks: Vec<(usize, usize)>,
 }
 
-/// Destino de un enlace externo (`mailto:`, `https:`…).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExternalLink {
-    pub rels_part: String,
-    pub id: String,
-    pub target: String,
-}
-
 /// Contenido de un `w:instrText`, como ` HYPERLINK "mailto:…" `. `index`
 /// cuenta los códigos de campo de la parte en orden.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,13 +76,6 @@ pub struct FieldCode {
     pub part: String,
     pub index: usize,
     pub text: String,
-}
-
-/// Contenido que no se revisa (PRD, «Avisos»).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Warnings {
-    pub images: usize,
-    pub objects: usize,
 }
 
 /// Fragmentos de una parte, en orden.
@@ -126,22 +102,9 @@ pub struct DocxDocument {
 
 impl DocxDocument {
     pub fn from_bytes(bytes: &[u8]) -> Result<DocxDocument> {
-        if bytes.starts_with(&OLE_SIGNATURE) {
-            return Err(Error::DocxProtected);
-        }
-        let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
-            .map_err(|_| Error::DocxInvalid("no es un archivo DOCX".into()))?;
-        let names: Vec<String> = archive
-            .file_names()
-            .map(|name| name.map(|n| n.into_owned()))
-            .collect::<std::result::Result<_, _>>()
-            .map_err(|_| Error::DocxInvalid("no es un archivo DOCX".into()))?;
-        if !names.iter().any(|n| n == DOCUMENT_PART) {
-            return Err(Error::DocxInvalid(
-                "no tiene el cuerpo del documento".into(),
-            ));
-        }
-        let mut read = |name: &str| read_part(&mut archive, name);
+        let mut package = Package::open(bytes, Office::Word)?;
+        let names = package.names().to_vec();
+        let mut read = |name: &str| package.read(name);
 
         let styles = estilos::Styles::read(
             read("word/styles.xml")?.as_deref(),
@@ -161,7 +124,8 @@ impl DocxDocument {
         }
         for name in names.iter().filter(|n| is_word_rels(n)) {
             if let Some(xml) = read(name)? {
-                extractor::extract_links(name, &xml, &mut out)?;
+                out.links
+                    .extend(super::ooxml::external_links(Office::Word, name, &xml)?);
             }
         }
 
@@ -256,25 +220,5 @@ fn text_parts(names: &[String]) -> Vec<String> {
 }
 
 fn is_word_rels(name: &str) -> bool {
-    name.strip_prefix("word/_rels/")
-        .is_some_and(|rest| rest.ends_with(".rels") && !rest.contains('/'))
-}
-
-/// Contenido de una parte como texto, o `None` si no existe.
-fn read_part(archive: &mut zip::ZipArchive<Cursor<&[u8]>>, name: &str) -> Result<Option<String>> {
-    let file = match archive.by_name(name) {
-        Ok(file) => file,
-        Err(zip::result::ZipError::FileNotFound) => return Ok(None),
-        Err(_) => return Err(Error::DocxInvalid(format!("no se puede leer {name}"))),
-    };
-    let mut data = Vec::new();
-    file.take(MAX_PART_BYTES + 1)
-        .read_to_end(&mut data)
-        .map_err(|_| Error::DocxInvalid(format!("no se puede leer {name}")))?;
-    if data.len() as u64 > MAX_PART_BYTES {
-        return Err(Error::DocxInvalid(format!("{name} es demasiado grande")));
-    }
-    String::from_utf8(data)
-        .map(Some)
-        .map_err(|_| Error::DocxInvalid(format!("{name} no está en UTF-8")))
+    super::ooxml::is_rels_in(name, "word")
 }

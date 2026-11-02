@@ -379,7 +379,10 @@ fn empty_paragraphs_are_not_segments() {
 fn a_protected_docx_is_a_clear_error() {
     let bytes = std::fs::read(corpus("es-02-protegido.docx")).unwrap();
     let error = DocxDocument::from_bytes(&bytes).unwrap_err();
-    assert!(matches!(error, Error::DocxProtected), "{error:?}");
+    assert!(
+        matches!(error, Error::Protected(nucleo::error::Office::Word)),
+        "{error:?}"
+    );
     assert!(error.to_string().contains("contraseña"), "{error}");
 }
 
@@ -393,7 +396,10 @@ fn something_that_is_not_a_docx_is_rejected() {
     let broken_xml = docx_with("<w:p><w:r><w:t>Ana Gil</w:r></w:p>", None);
     for bytes in [b"no es un zip".to_vec(), no_document, broken_xml] {
         let error = DocxDocument::from_bytes(&bytes).unwrap_err();
-        assert!(matches!(error, Error::DocxInvalid(_)), "{error:?}");
+        assert!(
+            matches!(error, Error::InvalidOffice(nucleo::error::Office::Word, _)),
+            "{error:?}"
+        );
         assert!(!error.to_string().contains("Ana"), "{error}");
     }
 }

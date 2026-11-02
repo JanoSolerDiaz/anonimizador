@@ -1,22 +1,19 @@
 //! Recorrido del XML de cada parte para sacar segmentos, fragmentos y lo
 //! demás que necesitan el escritor y los avisos.
 
-use quick_xml::escape::resolve_predefined_entity;
-use quick_xml::events::{BytesStart, Event};
-use quick_xml::{Reader, XmlVersion};
+use quick_xml::Reader;
+use quick_xml::events::Event;
 
 use super::estilos::Styles;
 use super::{ExternalLink, FieldCode, FragmentPos, ParagraphStyle, Segment, TableCell, Warnings};
+use crate::formatos::ooxml::{
+    APP_AUTHOR_FIELDS, CORE_AUTHOR_FIELDS, CORE_TEXT_FIELDS, Office, append_text, attribute,
+    element_texts as office_element_texts, push_unique,
+};
 use crate::{Error, Result};
 
-/// Elementos de `docProps/core.xml` que se analizan como segmentos.
-pub(super) const CORE_TEXT_FIELDS: [&str; 4] =
-    ["dc:title", "dc:subject", "cp:keywords", "dc:description"];
 /// Tabuladores y saltos dentro de una carrera: un espacio en el texto.
 pub(super) const BREAK_ELEMENTS: [&str; 3] = ["w:tab", "w:br", "w:cr"];
-/// Metadatos de autor que se vacían.
-pub(super) const CORE_AUTHOR_FIELDS: [&str; 2] = ["dc:creator", "cp:lastModifiedBy"];
-pub(super) const APP_AUTHOR_FIELDS: [&str; 1] = ["Company"];
 
 /// Lo que se va reuniendo al recorrer las partes.
 #[derive(Debug, Default)]
@@ -328,102 +325,11 @@ pub(super) fn extract_app(part: &str, xml: &str, out: &mut Collected) -> Result<
     Ok(())
 }
 
-/// Destinos de los enlaces externos de un archivo de relaciones.
-pub(super) fn extract_links(part: &str, xml: &str, out: &mut Collected) -> Result<()> {
-    let mut reader = Reader::from_str(xml);
-    loop {
-        match reader.read_event().map_err(|_| xml_error(part, &reader))? {
-            Event::Start(e) | Event::Empty(e) if e.name().as_ref() == "Relationship" => {
-                if attribute(&e, "TargetMode").as_deref() == Some("External")
-                    && let (Some(id), Some(target)) = (attribute(&e, "Id"), attribute(&e, "Target"))
-                {
-                    out.links.push(ExternalLink {
-                        rels_part: part.to_owned(),
-                        id,
-                        target,
-                    });
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-    }
-    Ok(())
-}
-
-/// Texto de cada elemento llamado como alguno de `names`, en orden.
 fn element_texts(part: &str, xml: &str, names: &[&str]) -> Result<Vec<(String, String)>> {
-    let mut reader = Reader::from_str(xml);
-    let mut found = Vec::new();
-    let mut current: Option<(String, String)> = None;
-    loop {
-        let event = reader.read_event().map_err(|_| xml_error(part, &reader))?;
-        match &event {
-            Event::Start(e) if names.contains(&e.name().as_ref()) => {
-                current = Some((e.name().as_ref().to_owned(), String::new()));
-            }
-            Event::Empty(e) if names.contains(&e.name().as_ref()) => {
-                found.push((e.name().as_ref().to_owned(), String::new()));
-            }
-            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_) => {
-                if let Some((_, text)) = &mut current {
-                    append_text(text, &event).map_err(|_| xml_error(part, &reader))?;
-                }
-            }
-            Event::End(e)
-                if current
-                    .as_ref()
-                    .is_some_and(|(n, _)| n == e.name().as_ref()) =>
-            {
-                found.extend(current.take());
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-    }
-    Ok(found)
-}
-
-/// Añade a `text` el texto de un evento, con las entidades resueltas.
-pub(super) fn append_text(text: &mut String, event: &Event<'_>) -> std::result::Result<(), ()> {
-    match event {
-        Event::Text(e) => text.push_str(&e.xml10_content()),
-        Event::CData(e) => text.push_str(&e.xml10_content()),
-        Event::GeneralRef(e) => {
-            if e.is_char_ref() {
-                text.push(e.resolve_char_ref().ok().flatten().ok_or(())?);
-            } else {
-                text.push_str(resolve_predefined_entity(&e.xml10_content()).ok_or(())?);
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-/// Valor de un atributo con las entidades resueltas.
-pub(super) fn attribute(element: &BytesStart<'_>, name: &str) -> Option<String> {
-    element
-        .attributes()
-        .flatten()
-        .find(|a| a.key.as_ref() == name)
-        .and_then(|a| {
-            a.normalized_value(XmlVersion::Implicit1_0)
-                .ok()
-                .map(|v| v.into_owned())
-        })
-}
-
-fn push_unique(list: &mut Vec<String>, value: String) {
-    if !value.is_empty() && !list.contains(&value) {
-        list.push(value);
-    }
+    office_element_texts(Office::Word, part, xml, names)
 }
 
 /// Error de XML con la parte y la posición, sin el texto del documento.
 pub(super) fn xml_error<R>(part: &str, reader: &Reader<R>) -> Error {
-    Error::DocxInvalid(format!(
-        "{part} no es XML válido (posición {})",
-        reader.error_position()
-    ))
+    crate::formatos::ooxml::xml_error(Office::Word, part, reader)
 }

@@ -411,7 +411,7 @@ fn an_unknown_format_is_rejected() {
     assert!(matches!(error, Error::UnsupportedFormat(_)), "{error:?}");
     assert_eq!(
         error.to_string(),
-        "El formato «rtf» no se admite; use DOCX, MD o TXT."
+        "El formato «rtf» no se admite; use DOCX, PPTX, XLSX, MD o TXT."
     );
 }
 
@@ -444,7 +444,10 @@ fn a_protected_docx_fails_without_touching_anything() {
         &options(OutputFormat::Docx),
     )
     .unwrap_err();
-    assert!(matches!(error, Error::DocxProtected), "{error:?}");
+    assert!(
+        matches!(error, Error::Protected(nucleo::error::Office::Word)),
+        "{error:?}"
+    );
     assert_eq!(std::fs::read_dir(out.path()).unwrap().count(), 0);
     assert!(store.documents().is_empty());
 }

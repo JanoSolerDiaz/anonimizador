@@ -5,6 +5,8 @@
 
 use std::path::PathBuf;
 
+pub use crate::formatos::ooxml::Office;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("No se encuentra la carpeta de recursos de la aplicación.")]
@@ -79,14 +81,24 @@ pub enum Error {
     InvalidReplacement(String),
 
     #[error(
-        "El documento está protegido con contraseña; quite la contraseña en Word y vuelva a intentarlo."
+        "El documento está protegido con contraseña; quite la contraseña en {} y vuelva a intentarlo.",
+        .0.app()
     )]
-    DocxProtected,
+    Protected(Office),
 
-    #[error("El archivo no es un documento de Word válido: {0}.")]
-    DocxInvalid(String),
+    #[error("El archivo no es {noun}: {detail}.", noun = .0.valid_noun(), detail = .1)]
+    InvalidOffice(Office, String),
 
-    #[error("El formato «{0}» no se admite; use DOCX, MD o TXT.")]
+    #[error(
+        "Los archivos .{} de {} 97-2003 no se admiten; ábralo en {} y guárdelo como .{}.",
+        .0.old_extension(),
+        .0.app(),
+        .0.app(),
+        .0.extension()
+    )]
+    OldOfficeFormat(Office),
+
+    #[error("El formato «{0}» no se admite; use DOCX, PPTX, XLSX, MD o TXT.")]
     UnsupportedFormat(String),
 
     #[error("Un archivo {from} no se puede convertir a {to}.")]
@@ -129,8 +141,9 @@ mod tests {
             Error::DictionaryVersion(2),
             Error::TextNotUtf8,
             Error::InvalidReplacement("detalle".into()),
-            Error::DocxProtected,
-            Error::DocxInvalid("detalle".into()),
+            Error::Protected(Office::Word),
+            Error::InvalidOffice(Office::Excel, "detalle".into()),
+            Error::OldOfficeFormat(Office::PowerPoint),
             Error::UnsupportedFormat("rtf".into()),
             Error::UnsupportedConversion {
                 from: "TXT",
@@ -147,6 +160,26 @@ mod tests {
                 "debe ser una sola línea: {message}"
             );
         }
+    }
+
+    #[test]
+    fn office_errors_name_the_right_application() {
+        assert_eq!(
+            Error::Protected(Office::Excel).to_string(),
+            "El documento está protegido con contraseña; quite la contraseña en Excel y vuelva a intentarlo."
+        );
+        assert_eq!(
+            Error::InvalidOffice(Office::PowerPoint, "falta la presentación".into()).to_string(),
+            "El archivo no es una presentación de PowerPoint válida: falta la presentación."
+        );
+        assert_eq!(
+            Error::InvalidOffice(Office::Word, "detalle".into()).to_string(),
+            "El archivo no es un documento de Word válido: detalle."
+        );
+        assert_eq!(
+            Error::OldOfficeFormat(Office::Excel).to_string(),
+            "Los archivos .xls de Excel 97-2003 no se admiten; ábralo en Excel y guárdelo como .xlsx."
+        );
     }
 
     #[test]
