@@ -11,6 +11,7 @@ pub mod pdf;
 pub mod pptx;
 pub mod salida;
 pub mod texto;
+pub mod xlsx;
 
 use crate::{Error, Result};
 

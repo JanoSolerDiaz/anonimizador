@@ -6,9 +6,9 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Write};
 
+use quick_xml::Reader;
 use quick_xml::escape::partial_escape;
 use quick_xml::events::{BytesStart, Event};
-use quick_xml::{Reader, Writer};
 
 use super::{Office, append_text, attribute, invalid, read_part, xml_error};
 use crate::Result;
@@ -45,6 +45,13 @@ pub(crate) struct Rules<'a> {
     /// literales.
     pub link_targets: bool,
     pub literals: &'a [(String, String)],
+    /// Elementos cuyo texto pasa por `transform` (fórmulas, por ejemplo).
+    pub transformed: &'a [&'a str],
+    /// Atributos (elemento, atributo) cuyo valor pasa por `transform`.
+    pub transformed_attributes: &'a [(&'a str, &'a str)],
+    /// Recibe el nombre del elemento, el del atributo (o `None` si es el
+    /// texto del elemento) y el texto, y devuelve el texto nuevo.
+    pub transform: Option<&'a dyn Fn(&str, Option<&str>, &str) -> String>,
 }
 
 /// Elemento con texto abierto mientras se recorre.
@@ -60,6 +67,7 @@ enum Kind {
     Fragment(usize),
     Blank,
     Literal,
+    Transformed,
 }
 
 /// Literales en el orden en que se aplican: las largas primero, para que una
@@ -190,6 +198,8 @@ pub(crate) fn rewrite(
                     Some(Kind::Blank)
                 } else if rules.literal.contains(&name) {
                     Some(Kind::Literal)
+                } else if rules.transformed.contains(&name) && rules.transform.is_some() {
+                    Some(Kind::Transformed)
                 } else {
                     None
                 };
@@ -237,6 +247,12 @@ pub(crate) fn rewrite(
                         Kind::Blank => (!o.text.is_empty()).then(String::new),
                         Kind::Literal => {
                             let new = apply_literals(&o.text, rules.literals);
+                            (new != o.text).then_some(new)
+                        }
+                        Kind::Transformed => {
+                            let element = o.tag.name();
+                            let transform = rules.transform.expect("solo con transform");
+                            let new = transform(element.as_ref(), None, &o.text);
                             (new != o.text).then_some(new)
                         }
                     };
@@ -299,6 +315,18 @@ fn changed_attributes(e: &BytesStart, rules: &Rules, empty: bool) -> Result<Opti
             }
         }
     }
+    if let Some(transform) = rules.transform {
+        for (element, key) in rules.transformed_attributes {
+            if name.as_ref() == *element
+                && let Some(value) = attribute(e, key)
+            {
+                let new = transform(element, Some(key), &value);
+                if new != value {
+                    set.push((key, new));
+                }
+            }
+        }
+    }
     if rules.link_targets
         && name.as_ref() == "Relationship"
         && attribute(e, "TargetMode").as_deref() == Some("External")
@@ -316,33 +344,34 @@ fn changed_attributes(e: &BytesStart, rules: &Rules, empty: bool) -> Result<Opti
     rebuild(e, &set, empty).map(Some)
 }
 
-/// La etiqueta con los atributos de `set` cambiados o añadidos.
+/// La etiqueta con los atributos de `set` cambiados o añadidos. Los que no
+/// cambian se copian tal como estaban escritos; los nuevos se escapan lo
+/// justo (`&`, `<` y las comillas dobles), como hace Office.
 pub(crate) fn rebuild(e: &BytesStart, set: &[(&str, &str)], empty: bool) -> Result<String> {
-    let name = e.name();
-    let mut tag = BytesStart::new(name.as_ref());
-    // Los atributos quedan en el mismo orden; los nuevos, al final.
-    for a in e.attributes().flatten() {
-        let key = a.key.as_ref();
-        match set.iter().find(|(k, _)| *k == key) {
-            Some(changed) => tag.push_attribute(*changed),
-            None => {
-                let value = attribute(e, key).unwrap_or_default();
-                tag.push_attribute((key, value.as_str()));
-            }
-        }
-    }
-    for added in set.iter().filter(|(k, _)| attribute(e, k).is_none()) {
-        tag.push_attribute(*added);
-    }
-    let mut writer = Writer::new(Vec::new());
-    let event = if empty {
-        Event::Empty(tag)
-    } else {
-        Event::Start(tag)
-    };
     let failed = || crate::Error::InvalidReplacement("no se puede reescribir una etiqueta".into());
-    writer.write_event(event).map_err(|_| failed())?;
-    String::from_utf8(writer.into_inner()).map_err(|_| failed())
+    let escape = |value: &str| {
+        value
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('"', "&quot;")
+    };
+    let mut tag = format!("<{}", e.name().as_ref());
+    // Los atributos quedan en el mismo orden; los nuevos, al final.
+    for a in e.attributes() {
+        let a = a.map_err(|_| failed())?;
+        let key = a.key.as_ref();
+        let value = match set.iter().find(|(k, _)| *k == key) {
+            Some((_, changed)) => escape(changed),
+            // Escrito entre comillas simples podría llevar comillas dobles.
+            None => a.value.replace('"', "&quot;"),
+        };
+        tag.push_str(&format!(" {key}=\"{value}\""));
+    }
+    for (key, value) in set.iter().filter(|(k, _)| attribute(e, k).is_none()) {
+        tag.push_str(&format!(" {key}=\"{}\"", escape(value)));
+    }
+    tag.push_str(if empty { "/>" } else { ">" });
+    Ok(tag)
 }
 
 /// `text` con cada literal cambiado por su sustituta. `literals` va ya
