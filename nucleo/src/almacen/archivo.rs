@@ -48,7 +48,8 @@ impl StoreKey {
         Ok(StoreKey(bytes))
     }
 
-    fn from_slice(bytes: &[u8]) -> Option<StoreKey> {
+    /// Clave a partir de sus 32 bytes, o `None` si no miden eso.
+    pub fn from_bytes(bytes: &[u8]) -> Option<StoreKey> {
         let array: [u8; KEY_LEN] = bytes.try_into().ok()?;
         Some(StoreKey(Zeroizing::new(array)))
     }
@@ -151,7 +152,7 @@ impl KeyProvider for SystemKeyring {
         match self.entry()?.get_secret() {
             Ok(secret) => {
                 let secret = Zeroizing::new(secret);
-                StoreKey::from_slice(&secret)
+                StoreKey::from_bytes(&secret)
                     .map(Some)
                     .ok_or_else(|| Error::Keyring("la clave guardada está dañada".into()))
             }
