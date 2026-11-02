@@ -5,6 +5,12 @@
 //!   cli comprobar-recursos [carpeta] [--modelo <nombre>]...
 //!   cli entidades <archivo> [opciones]
 //!   cli evaluar <carpeta> [opciones]
+//!   cli anonimizar <archivos…> --salida <carpeta> [opciones]
+//!   cli desanonimizar <archivos…> --salida <carpeta> | --texto "…"
+//!   cli almacen listar | exportar | importar | olvidar | vaciar | purgar
+
+mod almacen;
+mod operaciones;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -32,7 +38,23 @@ const USAGE: &str = "Uso:
       --tiempos                      tiempo de cada fase en la salida de error
   cli evaluar <carpeta> [opciones]
       --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
-      --detalle                      lista las entidades no detectadas y las de más";
+      --detalle                      lista las entidades no detectadas y las de más
+  cli anonimizar <archivos…> --salida <carpeta> [opciones]
+      --formato docx|md|txt          formato de salida (por defecto: el de cada archivo;
+                                     MD y TXT no pueden salir en DOCX)
+      --almacen <archivo>            almacén cifrado (por defecto: el de la carpeta de datos del usuario)
+      --no-sustituir, --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
+  cli desanonimizar <archivos…> --salida <carpeta> [opciones]
+  cli desanonimizar --texto \"…\" [opciones]
+      --fuente propio|<diccionario>  fuente que manda si un marcador tiene valores distintos
+      --almacen <archivo>            como en anonimizar
+  cli almacen listar
+  cli almacen exportar <documento> --salida <carpeta>
+  cli almacen importar <diccionario.json>
+  cli almacen olvidar <documento>
+  cli almacen vaciar --confirmar
+  cli almacen purgar
+      --almacen <archivo>            como en anonimizar";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -57,6 +79,9 @@ fn main() -> ExitCode {
             Ok(evaluate) => evaluate_corpus(evaluate),
             Err(_) => usage(),
         },
+        Some("anonimizar") => operaciones::anonymize_files(&args[1..]),
+        Some("desanonimizar") => operaciones::deanonymize_files(&args[1..]),
+        Some("almacen") => almacen::run(&args[1..]),
         _ => usage(),
     }
 }
@@ -64,6 +89,17 @@ fn main() -> ExitCode {
 fn usage() -> ExitCode {
     eprintln!("{USAGE}");
     ExitCode::from(2)
+}
+
+/// Argumentos que no valen: el uso, o el error del valor.
+fn args_error(error: ArgsError) -> ExitCode {
+    match error {
+        ArgsError::Usage => usage(),
+        ArgsError::Invalid(error) => {
+            eprintln!("{error}");
+            ExitCode::from(2)
+        }
+    }
 }
 
 /// Argumentos de `comprobar-recursos`.

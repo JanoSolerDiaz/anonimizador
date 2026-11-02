@@ -2,7 +2,7 @@
 //!
 //! Todo el procesamiento ocurre aquí. La app de Tauri solo envía rutas y
 //! opciones, y recibe eventos de progreso. Este crate no depende de Tauri:
-//! se prueba con `cargo test` y con la CLI (`src/bin/cli.rs`).
+//! se prueba con `cargo test` y con la CLI (`src/bin/cli/`).
 
 pub mod almacen;
 pub mod error;

@@ -168,6 +168,31 @@ impl KeyProvider for SystemKeyring {
     }
 }
 
+/// Carpeta de la aplicación dentro de la carpeta de datos del usuario.
+const APP_DIR: &str = "anonimizador";
+/// Nombre del archivo del almacén.
+const STORE_FILE: &str = "almacen.anon";
+
+/// Ruta del almacén en la carpeta de datos del usuario (PRD, «Archivo del
+/// almacén»): `%APPDATA%` en Windows y `~/Library/Application Support` en
+/// Mac. En Linux, que solo se usa para desarrollar, `$XDG_DATA_HOME` o
+/// `~/.local/share`. `None` si el sistema no dice dónde está esa carpeta.
+pub fn default_path() -> Option<PathBuf> {
+    let var = |name: &str| {
+        std::env::var_os(name)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let base = if cfg!(windows) {
+        var("APPDATA")
+    } else if cfg!(target_os = "macos") {
+        var("HOME").map(|home| home.join("Library").join("Application Support"))
+    } else {
+        var("XDG_DATA_HOME").or_else(|| var("HOME").map(|home| home.join(".local").join("share")))
+    };
+    Some(base?.join(APP_DIR).join(STORE_FILE))
+}
+
 /// Lee el almacén de `path`. Si no existe, devuelve uno vacío; si solo
 /// queda la copia `.bak`, lee la copia.
 pub fn load(path: &Path, keys: &dyn KeyProvider) -> Result<Store> {
