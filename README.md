@@ -57,6 +57,24 @@ Opciones de las dos órdenes: `--modelo <carpeta>`, `--decodificacion primer|med
 
 El motor emite registros con `tracing` (recuentos por tipo, tokens, ventanas y tiempos). Nunca incluyen texto de los documentos ni valores detectados: lo comprueba `nucleo/tests/logs.rs`.
 
+## Anonimizar y desanonimizar desde la terminal
+
+```bash
+# DOCX, MD o TXT. Sin --formato, cada archivo sale en su formato
+cargo run --release -p nucleo --bin cli -- anonimizar contrato.docx notas.md --salida <carpeta>
+
+# Archivos anonimizados o texto pegado
+cargo run --release -p nucleo --bin cli -- desanonimizar <carpeta>/contrato_anonimizado.docx --salida <otra carpeta>
+cargo run --release -p nucleo --bin cli -- desanonimizar --texto "Firmado por [NOMBRE_PERSONA_0001]"
+
+# Documentos y diccionarios del almacén
+cargo run --release -p nucleo --bin cli -- almacen listar | exportar <documento> --salida <carpeta> | importar <archivo> | olvidar <documento> | vaciar --confirmar | purgar
+```
+
+`anonimizar` admite `--formato docx|md|txt`, `--no-sustituir` y las opciones del motor. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
+
+El almacén está cifrado y vive en la carpeta de datos del usuario (`%APPDATA%\anonimizador\almacen.anon` en Windows, `~/Library/Application Support/anonimizador/almacen.anon` en Mac); su clave está en el almacén de credenciales del sistema. Todas las órdenes aceptan `--almacen <archivo>` para usar otro. **La CLI no debe usarse con la app abierta**: las dos escriben en el mismo almacén.
+
 ## Pruebas
 
 ```bash
