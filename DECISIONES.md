@@ -162,3 +162,7 @@ El PRD dice que los logs registran nombres de archivo. El nombre de un archivo p
 Las pruebas de la CLI no pueden usar el almacén de credenciales del sistema: dejarían claves en el equipo de quien las pase y fallarían en una máquina sin él. Las compilaciones de depuración aceptan la clave del almacén en la variable `ANONIMIZADOR_CLAVE_PRUEBA` (64 cifras hexadecimales). Las de `--release`, que son las que se entregan, la ignoran y usan siempre el almacén de credenciales, así que nadie puede abrir el almacén de un usuario poniendo una variable.
 
 En Linux, que solo se usa para desarrollar, el almacén va en `$XDG_DATA_HOME` o en `~/.local/share`.
+
+### Los nombres de salida salen del archivo que se procesa
+
+El PRD ponía como ejemplo que desanonimizar `contrato-cliente_anonimizado.docx` diera `contrato-cliente_desanonimizado.docx`. La app saca la descripción del archivo que recibe, así que da `contrato-cliente-anonimizado_desanonimizado.docx`; el diccionario exportado, `contrato-cliente-anonimizado_diccionario.json`. Jano decidió el 2026-11-02 quedarse con este comportamiento y cambiar los ejemplos del PRD.

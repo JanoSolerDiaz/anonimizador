@@ -61,11 +61,11 @@ Una sola ventana con dos pestañas: **Anonimizar** y **Desanonimizar**. Todo se 
 
 ### Nombres de archivo
 
-Formato `descripción_sufijo.ext`. La descripción sale del nombre original, en minúsculas, sin acentos ni espacios. El sufijo indica la operación.
+Formato `descripción_sufijo.ext`. La descripción sale del nombre del archivo que se procesa, en minúsculas, sin acentos y con un guion en lugar de espacios y signos. El sufijo indica la operación. El diccionario toma la descripción del documento anonimizado.
 
-- `contrato-cliente_anonimizado.docx`
-- `contrato-cliente_desanonimizado.docx`
-- `contrato-cliente_diccionario.json`, solo si el usuario lo exporta
+- `Contrato cliente.docx` → `contrato-cliente_anonimizado.docx`
+- `contrato-cliente_anonimizado.docx` → `contrato-cliente-anonimizado_desanonimizado.docx`
+- `contrato-cliente-anonimizado_diccionario.json`, solo si el usuario lo exporta
 
 Si el archivo ya existe, se añade un sufijo `_2`, `_3`. Nunca se sobrescribe nada.
 
