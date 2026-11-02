@@ -226,7 +226,7 @@ Las tres se resolvieron como se proponía:
 - [x] El motor analiza los párrafos con el contexto de sus vecinos y el informe de detección recoge la mejora medida
 - [x] Pruebas automáticas del PRD de este hito en verde: marcadores entre documentos, texto mezclado, DOCX ida y vuelta, XML válido, metadatos vacíos, contraseña, desanonimización tolerante, almacén ilegible en disco y con otra clave, caducidad, escritura interrumpida, conflicto al importar, nombres de salida y logs sin datos
 - [x] `cli anonimizar` y `cli desanonimizar` funcionan con DOCX, MD, TXT y texto pegado
-- [ ] Jano abre en Word los DOCX anonimizados del corpus y no piden reparación — **pendiente de Jano**; los cuatro anonimizados y sus desanonimizados se prepararon el 2026-11-02
+- [x] Jano abre en Word los DOCX anonimizados del corpus y no piden reparación — revisados el 2026-11-02: los cuatro anonimizados con el modelo real y sus desanonimizados se abren bien
 - [ ] DOCX de 10 páginas en menos de 5 s (modelo ya cargado) — **no se cumple** con la lectura doble; Jano lo aceptó el 2026-10-28 (DECISIONES). Se confirma en el equipo de referencia en el hito 6
 - [x] Sin crates con acceso a red (la prueba de dependencias sigue en verde)
 - [x] Cobertura ≥ 80 % en `almacen`, `formatos` y `operaciones`
