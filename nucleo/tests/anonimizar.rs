@@ -598,3 +598,110 @@ fn the_extension_is_read_without_case() {
     .unwrap();
     assert_eq!(summary.output, out.path().join("nota_anonimizado.txt"));
 }
+
+/// Partes del paquete ZIP, en su orden, con su contenido.
+fn zip_parts(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    (0..archive.len())
+        .map(|i| {
+            let mut file = archive.by_index(i).unwrap();
+            let mut data = Vec::new();
+            std::io::Read::read_to_end(&mut file, &mut data).unwrap();
+            (file.name().unwrap().into_owned(), data)
+        })
+        .collect()
+}
+
+/// Lee el XML entero: falla si está mal formado o si alguna etiqueta queda
+/// abierta al final.
+fn assert_well_formed(name: &str, data: &[u8]) {
+    use quick_xml::events::Event;
+    let mut reader = quick_xml::Reader::from_reader(data);
+    let (mut depth, mut buffer) = (0usize, Vec::new());
+    loop {
+        match reader.read_event_into(&mut buffer) {
+            Ok(Event::Eof) => break,
+            Ok(Event::Start(e)) => {
+                depth += 1;
+                for a in e.attributes() {
+                    a.unwrap_or_else(|err| panic!("{name}: {err}"));
+                }
+            }
+            Ok(Event::Empty(e)) => {
+                for a in e.attributes() {
+                    a.unwrap_or_else(|err| panic!("{name}: {err}"));
+                }
+            }
+            Ok(Event::End(_)) => depth -= 1,
+            Ok(_) => {}
+            Err(error) => panic!("{name}: XML mal formado: {error}"),
+        }
+        buffer.clear();
+    }
+    assert_eq!(depth, 0, "{name}: quedan etiquetas abiertas");
+}
+
+#[test]
+fn every_part_of_the_output_docx_is_kept_and_its_xml_well_formed() {
+    for name in CORPUS {
+        let input = corpus(&format!("{name}.docx"));
+        let dir = tempfile::tempdir().unwrap();
+        let summary = anonymize(
+            &input,
+            dir.path(),
+            &Fake::for_corpus(name),
+            &mut Store::new(),
+            &options(OutputFormat::Docx),
+        )
+        .unwrap();
+        let before = zip_parts(&std::fs::read(&input).unwrap());
+        let after = zip_parts(&std::fs::read(&summary.output).unwrap());
+        let names = |parts: &[(String, Vec<u8>)]| -> Vec<String> {
+            parts.iter().map(|p| p.0.clone()).collect()
+        };
+        assert_eq!(names(&after), names(&before), "{name}: partes del paquete");
+        assert_eq!(after[0].0, "[Content_Types].xml", "{name}");
+        for (part, data) in &after {
+            if part.ends_with(".xml") || part.ends_with(".rels") {
+                assert_well_formed(&format!("{name}/{part}"), data);
+            }
+        }
+    }
+}
+
+#[test]
+fn two_different_files_that_share_a_value_get_the_same_marker() {
+    let dir = tempfile::tempdir().unwrap();
+    let first = write_text(dir.path(), "contrato.txt", "Firma Ana López en Valencia.\n");
+    let second = write_text(
+        dir.path(),
+        "factura.txt",
+        "Cliente: Luis Gil.\n\nAutoriza Ana López.\n",
+    );
+    let out = tempfile::tempdir().unwrap();
+    let mut store = Store::new();
+    let fake = Fake::new(&[
+        ("Ana López", "NOMBRE_PERSONA"),
+        ("Luis Gil", "NOMBRE_PERSONA"),
+        ("Valencia", "LUGAR"),
+    ]);
+    let mut outputs = Vec::new();
+    for input in [&first, &second] {
+        let summary = anonymize(
+            input,
+            out.path(),
+            &fake,
+            &mut store,
+            &options(OutputFormat::Text),
+        )
+        .unwrap();
+        outputs.push(std::fs::read_to_string(&summary.output).unwrap());
+    }
+    assert_eq!(outputs[0], "Firma [NOMBRE_PERSONA_0001] en [LUGAR_0001].\n");
+    assert_eq!(
+        outputs[1],
+        "Cliente: [NOMBRE_PERSONA_0002].\n\nAutoriza [NOMBRE_PERSONA_0001].\n"
+    );
+    assert_eq!(store.documents().len(), 2);
+    assert_eq!(store.entries().count(), 3);
+}
