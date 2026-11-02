@@ -8,6 +8,7 @@
 pub mod docx;
 pub mod ooxml;
 pub mod pdf;
+pub mod pptx;
 pub mod salida;
 pub mod texto;
 

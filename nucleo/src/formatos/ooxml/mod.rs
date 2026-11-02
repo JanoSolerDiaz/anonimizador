@@ -3,7 +3,9 @@
 //! para leer XML, la reescritura de una parte por reglas y los metadatos de
 //! `docProps`.
 
+pub mod drawingml;
 pub(crate) mod reescritura;
+pub(crate) mod texto;
 
 use std::io::{Cursor, Read};
 
