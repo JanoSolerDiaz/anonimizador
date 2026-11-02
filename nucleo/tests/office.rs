@@ -177,7 +177,7 @@ fn the_summary_counts_types_and_gives_the_warnings() {
         &mut Store::new(),
         dir.path(),
     );
-    assert_eq!(summary.entities["NOMBRE_PERSONA"] > 0, true);
+    assert!(summary.entities["NOMBRE_PERSONA"] > 0);
     let json = expected(PPTX);
     assert_eq!(
         summary.warnings.images,

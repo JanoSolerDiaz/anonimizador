@@ -36,7 +36,7 @@ use crate::formatos::ooxml::{
     ExternalLink, Office, PROPERTY_TEXTS, Package, Warnings, append_text, attribute, element_texts,
     external_links, push_unique, relationships, rels_of, xml_error,
 };
-use crate::formatos::pptx::{apply_to_fragments, replaced_texts};
+use crate::formatos::pptx::{SegmentMap, apply_to_fragments, replaced_texts};
 
 pub use crate::formatos::ooxml::drawingml::FragmentPos;
 
@@ -614,7 +614,7 @@ impl XlsxDocument {
             .filter(|r| !self.segments[r.segment].map.is_empty())
             .cloned()
             .collect();
-        let segments: Vec<(&str, &[Option<FragmentPos>], &[(usize, usize)])> = self
+        let segments: Vec<SegmentMap> = self
             .segments
             .iter()
             .map(|s| (s.part.as_str(), s.map.as_slice(), s.breaks.as_slice()))

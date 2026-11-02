@@ -51,8 +51,12 @@ pub(crate) struct Rules<'a> {
     pub transformed_attributes: &'a [(&'a str, &'a str)],
     /// Recibe el nombre del elemento, el del atributo (o `None` si es el
     /// texto del elemento) y el texto, y devuelve el texto nuevo.
-    pub transform: Option<&'a dyn Fn(&str, Option<&str>, &str) -> String>,
+    pub transform: Option<Transform<'a>>,
 }
+
+/// Función que transforma un texto: recibe el nombre del elemento, el del
+/// atributo (o `None` si es el texto del elemento) y el texto.
+pub(crate) type Transform<'a> = &'a dyn Fn(&str, Option<&str>, &str) -> String;
 
 /// Elemento con texto abierto mientras se recorre.
 struct Open<'x> {

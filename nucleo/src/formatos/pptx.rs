@@ -354,7 +354,7 @@ impl PptxDocument {
         HashMap<&str, HashMap<usize, String>>,
         HashMap<&str, HashSet<usize>>,
     )> {
-        let segments: Vec<(&str, &[Option<FragmentPos>], &[(usize, usize)])> = self
+        let segments: Vec<SegmentMap> = self
             .segments
             .iter()
             .map(|s| (s.part.as_str(), s.map.as_slice(), s.breaks.as_slice()))
@@ -543,11 +543,15 @@ pub(crate) fn replaced_texts<'a>(
     Ok(chars.into_iter().map(|c| c.into_iter().collect()).collect())
 }
 
+/// Un segmento visto desde el escritor: su parte, su mapa a los fragmentos
+/// y sus saltos.
+pub(crate) type SegmentMap<'a> = (&'a str, &'a [Option<FragmentPos>], &'a [(usize, usize)]);
+
 /// Texto nuevo de cada fragmento que cambia y saltos que se borran, por
 /// parte. `segments` da, por segmento, su parte, su mapa y sus saltos.
 #[allow(clippy::type_complexity)]
 pub(crate) fn apply_to_fragments<'a>(
-    segments: &[(&'a str, &[Option<FragmentPos>], &[(usize, usize)])],
+    segments: &[SegmentMap<'a>],
     replacements: &[Replacement],
     fragment: impl Fn(&str, usize) -> &'a str,
 ) -> Result<(

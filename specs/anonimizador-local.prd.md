@@ -4,7 +4,7 @@
 
 ## Contexto y objetivo
 
-App de escritorio para Windows y macOS que anonimiza documentos Word y PDF con un modelo de IA local, y los desanonimiza después. Los datos originales se guardan en un almacén cifrado en el propio equipo. Ningún dato sale del equipo.
+App de escritorio para Windows y macOS que anonimiza documentos Word, PowerPoint, Excel y PDF con un modelo de IA local, y los desanonimiza después. Los datos originales se guardan en un almacén cifrado en el propio equipo. Ningún dato sale del equipo.
 
 La instala el departamento de sistemas en los equipos de la empresa. La usan personas no técnicas. Debe ser rápida de abrir, rápida de usar y difícil de usar mal.
 
@@ -17,11 +17,14 @@ Modelo: [bardsai/eu-pii-anonimization-multilang](https://huggingface.co/bardsai/
 
 ## Alcance de la primera versión
 
-La v1 cubre DOCX y PDF digital de entrada, con salida en el mismo formato o en un formato de texto. La salida PDF conserva la maquetación rasterizando solo las páginas con datos personales.
+La v1 cubre DOCX, PPTX, XLSX y PDF digital de entrada, con salida en el mismo formato o en un formato de texto. La salida PDF conserva la maquetación rasterizando solo las páginas con datos personales.
 
 | Entrada | Salidas de anonimización | Desanonimización |
 | --- | --- | --- |
 | DOCX | DOCX (formato original), MD, TXT | Sí |
+| PPTX | PPTX (formato original), MD, TXT | Sí |
+| XLSX | XLSX (formato original), MD, TXT | Sí |
+| DOC, PPT, XLS (Office 97-2003) | Ninguna. Se rechazan con un aviso que pide guardarlos como DOCX, PPTX o XLSX | No |
 | PDF digital | PDF (maquetación conservada), DOCX (solo texto), MD, TXT | No. Se desanonimiza la versión DOCX, MD o TXT |
 | MD, TXT | MD, TXT | Sí |
 | Texto pegado | No en v1 | Sí. El resultado se copia al portapapeles |
@@ -31,7 +34,7 @@ Fuera de alcance en v1:
 
 - OCR de PDF escaneados.
 - Pantalla de revisión manual de entidades antes de exportar.
-- Excel, PowerPoint, imágenes y otros formatos.
+- Imágenes, formatos de Office 97-2003 y otros formatos.
 - Detección de datos dentro de imágenes incrustadas. Se avisa, no se procesa.
 - Capa de texto invisible en las páginas PDF rasterizadas.
 - Opción "anonimizar sin vincular": marcadores aislados para un documento concreto, que no se relacionen con los de otros documentos.
@@ -248,6 +251,38 @@ El marcador hereda el formato del primer fragmento. Los fragmentos vacíos se pu
 
 Se genera desde el texto extraído y ya anonimizado. MD conserva títulos, listas y tablas básicas. TXT solo el texto, un párrafo por línea.
 
+## Formato PPTX
+
+Como en DOCX, la presentación anonimizada es el archivo original con el texto sustituido dentro de su XML. Cada párrafo de DrawingML (`a:p`) es un segmento, y sus fragmentos son los `a:t`; un salto de línea (`a:br`) cuenta como un espacio.
+
+### Partes que se procesan
+
+- Diapositivas, en el orden de la presentación, cada una seguida de sus diagramas (SmartArt), sus gráficos y sus notas.
+- Patrones y diseños de diapositiva, de notas y de documentos: pueden llevar un pie con un nombre.
+- Comentarios, antiguos y modernos. Los nombres, iniciales e identificadores de sus autores se vacían.
+- Valores en caché de los gráficos, texto alternativo de imágenes y formas, destinos de enlaces y títulos de `docProps/app.xml`: sustitución literal de los valores detectados.
+- Metadatos como en DOCX.
+
+### Salida MD y TXT desde PPTX
+
+Una sección por diapositiva («Diapositiva N»), con el título como encabezado, las tablas como tablas y las notas al final. Plantillas y comentarios no salen.
+
+## Formato XLSX
+
+El libro anonimizado es el archivo original con los valores sustituidos dentro de su XML.
+
+### Qué se analiza
+
+- Cada texto distinto es un segmento: los textos compartidos, los textos en línea de una celda y los resultados de texto de las fórmulas. Van hoja a hoja y fila a fila, para que el modelo lea juntas las celdas de una fila.
+- Las celdas numéricas también se analizan, tal como se ven: un teléfono o un documento guardado como número, una fecha (`14/02/2025`, no el número de serie). Un número sustituido pasa a ser texto con el marcador. **Los importes no se sustituyen por defecto en Excel**; se puede pedir que sí.
+- Los nombres de hoja. Si llevan un dato, la hoja se renombra con el marcador sin corchetes (Excel no admite corchetes en un nombre de hoja), como mucho 31 caracteres y sin repetir otro nombre. El nombre nuevo se cambia en fórmulas, nombres definidos, gráficos, tablas dinámicas, vínculos y `docProps/app.xml`. Al desanonimizar se recupera.
+- Comentarios, antiguos y modernos, y encabezados y pies de página. Los autores y las personas de los comentarios se vacían.
+- Sustitución literal de los valores detectados dentro de las comillas de las fórmulas, en listas de validación, en las cachés de gráficos y tablas dinámicas, en los nombres de columna de las tablas y en los vínculos.
+
+### Salida MD y TXT desde XLSX
+
+Una sección por hoja con sus celdas: en MD, una tabla con la primera fila como cabecera; en TXT, una línea por fila con las celdas separadas por tabuladores.
+
 ## Formato PDF
 
 El PDF anonimizado conserva intactas las páginas sin datos personales. Las páginas con datos se convierten en imagen, se tapan los datos y se escriben los marcadores encima como texto. Así el dato original desaparece del archivo.
@@ -354,7 +389,7 @@ Toda la correspondencia entre marcadores y datos originales vive en un único ar
 
 ### Desanonimización
 
-Entradas admitidas: DOCX, MD, TXT y texto pegado. Salida: el mismo formato que la entrada.
+Entradas admitidas: DOCX, PPTX, XLSX, MD, TXT y texto pegado. Salida: el mismo formato que la entrada. En los nombres de hoja de Excel se buscan también los marcadores sin corchetes.
 
 1. Buscar marcadores con una expresión tolerante: mayúsculas o minúsculas, espacios dentro de los corchetes, y formas cortas. Un LLM puede haberlos alterado ligeramente.
 2. En DOCX, buscar sobre el texto reconstruido con el mapa de fragmentos. Un marcador puede estar partido en varios fragmentos si alguien editó el documento.
@@ -433,6 +468,8 @@ La v1 está terminada cuando pasan todas estas pruebas en Windows y en macOS.
 Carpeta `tests/corpus` con documentos sintéticos, con datos personales inventados. Nunca documentos reales.
 
 - DOCX con nombres partidos en varios fragmentos de formato, tablas, encabezados, pies, notas al pie, comentarios, control de cambios y metadatos de autor.
+- PPTX con títulos, nombres partidos, saltos de línea, tablas, notas, comentarios, texto alternativo, enlaces y un patrón con un nombre.
+- XLSX con una hoja con nombre de persona, textos partidos, números (teléfonos, fechas, importes), resultados de fórmula, nombres definidos, listas de validación, vínculos y pies de página.
 - PDF digital de una y de varias páginas, con datos que cruzan de línea, palabras con guion al final de línea, formularios rellenos y anotaciones.
 - PDF escaneado (solo imagen).
 - DOCX y PDF protegidos con contraseña.
@@ -450,6 +487,10 @@ Cada documento tiene al lado un JSON con las entidades esperadas.
 - [ ] DOCX ida y vuelta: anonimizar y desanonimizar devuelve exactamente el texto original en todas las partes procesadas.
 - [ ] DOCX: el XML de salida es válido y Word lo abre sin errores de reparación.
 - [ ] DOCX: los metadatos de autor quedan vacíos.
+- [ ] PPTX y XLSX ida y vuelta: anonimizar y desanonimizar devuelve exactamente el texto original, también los nombres de hoja.
+- [ ] PPTX y XLSX: ninguna parte del paquete de salida contiene un valor detectado, y PowerPoint y Excel lo abren sin errores de reparación.
+- [ ] XLSX: los importes se quedan por defecto y se sustituyen si se pide.
+- [ ] DOC, PPT y XLS: se rechazan con el aviso previsto.
 - [ ] PDF: el texto extraído del PDF de salida no contiene ningún valor original detectado.
 - [ ] PDF: las páginas sin entidades son idénticas a las originales.
 - [ ] PDF escaneado: se rechaza con el aviso previsto.
@@ -500,7 +541,7 @@ anonimizador/
 
 1. **Esqueleto.** Proyecto Tauri 2 + Svelte 5 que abre una ventana vacía. Crate `nucleo`. Scripts de descarga del modelo y de binarios con comprobación SHA-256. Compilación en Windows y macOS.
 2. **Motor.** Tokenización, inferencia ONNX, troceado, decodificación BIO, reglas y marcadores. CLI: `cli entidades archivo.txt` imprime las entidades en JSON. Medir tiempos frente a los objetivos de rendimiento.
-3. **DOCX y almacén.** Extractor y escritor DOCX con mapa de fragmentos. Almacén cifrado con caducidad, exportar e importar. Desanonimización de DOCX, MD, TXT y texto. Salidas MD y TXT. CLI: `cli anonimizar` y `cli desanonimizar`.
+3. **DOCX y almacén.** Extractor y escritor DOCX con mapa de fragmentos. Almacén cifrado con caducidad, exportar e importar. Desanonimización de DOCX, MD, TXT y texto. Salidas MD y TXT. CLI: `cli anonimizar` y `cli desanonimizar`. Añadido después del cierre (2026-11-02): PPTX y XLSX con la misma base, de entrada y de salida.
 4. **PDF.** Preparación, detección de escaneados, extracción con mapa, rasterización, marcadores, limpieza y verificación obligatoria. Salidas DOCX, MD y TXT desde PDF.
 5. **Interfaz.** Las dos pestañas, arrastre, cola, progreso, texto pegado, panel del almacén, resúmenes y avisos. Comandos Tauri y eventos de progreso.
 6. **Empaquetado.** MSI y PKG/DMG firmados, WebView2 sin conexión, binario universal en Mac. Pruebas manuales.

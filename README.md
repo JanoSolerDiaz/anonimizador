@@ -1,6 +1,6 @@
 # Anonimizador local
 
-App de escritorio (Windows y macOS) que anonimiza documentos Word y PDF con un modelo de IA local y los desanonimiza después. Ningún dato sale del equipo.
+App de escritorio (Windows y macOS) que anonimiza documentos Word, PowerPoint, Excel y PDF con un modelo de IA local y los desanonimiza después. Ningún dato sale del equipo.
 
 Especificación: [`specs/anonimizador-local.prd.md`](specs/anonimizador-local.prd.md). Cambios respecto a ella: [`DECISIONES.md`](DECISIONES.md).
 
@@ -60,8 +60,8 @@ El motor emite registros con `tracing` (recuentos por tipo, tokens, ventanas y t
 ## Anonimizar y desanonimizar desde la terminal
 
 ```bash
-# DOCX, MD o TXT. Sin --formato, cada archivo sale en su formato
-cargo run --release -p nucleo --bin cli -- anonimizar contrato.docx notas.md --salida <carpeta>
+# DOCX, PPTX, XLSX, MD o TXT. Sin --formato, cada archivo sale en su formato
+cargo run --release -p nucleo --bin cli -- anonimizar contrato.docx ventas.pptx nominas.xlsx notas.md --salida <carpeta>
 
 # Archivos anonimizados o texto pegado
 cargo run --release -p nucleo --bin cli -- desanonimizar <carpeta>/contrato_anonimizado.docx --salida <otra carpeta>
@@ -71,7 +71,9 @@ cargo run --release -p nucleo --bin cli -- desanonimizar --texto "Firmado por [N
 cargo run --release -p nucleo --bin cli -- almacen listar | exportar <documento> --salida <carpeta> | importar <archivo> | olvidar <documento> | vaciar --confirmar | purgar
 ```
 
-`anonimizar` admite `--formato docx|md|txt`, `--no-sustituir` y las opciones del motor. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
+`anonimizar` admite `--formato docx|pptx|xlsx|md|txt`, `--no-sustituir` y las opciones del motor. Word, PowerPoint y Excel salen en su propio formato, en MD o en TXT; los archivos de Office 97-2003 (`.doc`, `.ppt`, `.xls`) se rechazan con un aviso para guardarlos en el formato nuevo. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
+
+En Excel se analizan los textos, los resultados de las fórmulas, los nombres de las hojas y también las celdas numéricas (un teléfono guardado como número, una fecha), cada una con el título de su columna como contexto para el modelo. Un número sustituido pasa a ser texto con el marcador. Los importes no se sustituyen por defecto; `--sustituir-importes` los sustituye también. Una hoja con un dato en el nombre se renombra con el marcador sin corchetes y se recupera al desanonimizar. Detalles en `DECISIONES.md`.
 
 ### Cómo funciona el almacén
 
@@ -95,6 +97,10 @@ cargo test --workspace -- --include-ignored   # las ignoradas necesitan recursos
 
 # Tiempos de un DOCX de diez páginas y de un almacén con 1.000 documentos
 cargo test --release -p nucleo --test rendimiento -- --include-ignored --nocapture --test-threads=1
+
+# Volver a generar el corpus sintético de Word y de PowerPoint y Excel
+cargo run -p nucleo --example generar_corpus_docx
+cargo run -p nucleo --example generar_corpus_office
 
 # Scripts de descarga y garantía "sin red" por plataforma
 node --test "scripts/test/*.test.mjs"

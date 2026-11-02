@@ -166,3 +166,44 @@ En Linux, que solo se usa para desarrollar, el almacén va en `$XDG_DATA_HOME` o
 ### Los nombres de salida salen del archivo que se procesa
 
 El PRD ponía como ejemplo que desanonimizar `contrato-cliente_anonimizado.docx` diera `contrato-cliente_desanonimizado.docx`. La app saca la descripción del archivo que recibe, así que da `contrato-cliente-anonimizado_desanonimizado.docx`; el diccionario exportado, `contrato-cliente-anonimizado_diccionario.json`. Jano decidió el 2026-11-02 quedarse con este comportamiento y cambiar los ejemplos del PRD.
+
+## PowerPoint y Excel · 2026-11-02
+
+Jano añadió PowerPoint y, sobre todo, Excel al alcance de la v1, con las mismas salidas que Word. El PRD lo recoge en «Formato PPTX» y «Formato XLSX». Lo que sigue son las decisiones y lo que se ha elegido al hacerlo.
+
+### Decisiones de Jano
+
+- **Salidas.** PPTX sale en PPTX, MD o TXT; XLSX, en XLSX, MD o TXT, como Word.
+- **Números de Excel.** Se analizan también las celdas numéricas: un teléfono o un documento guardado como número, una fecha. Los importes no se sustituyen por defecto en Excel (en la CLI, `--sustituir-importes` los sustituye). En los demás formatos los importes siguen como estaban: se sustituyen salvo que se desmarque el tipo.
+- **Nombres de hoja.** Si llevan un dato, se renombran con el marcador sin corchetes y el nombre se recupera al desanonimizar.
+- **Office 97-2003.** `.doc`, `.ppt` y `.xls` se rechazan con un aviso que pide guardarlos en el formato nuevo.
+
+### Una base común para los tres formatos de Office
+
+DOCX, PPTX y XLSX son el mismo tipo de paquete: un ZIP con partes XML. La lectura segura del paquete, el escritor que empalma el texto nuevo en el XML original y el vaciado de metadatos están en `nucleo/src/formatos/ooxml/`, y los tres formatos los comparten. El texto de PowerPoint y de los cuadros de texto y gráficos de Excel (DrawingML) tiene su propio lector común. Un archivo de Office se reconoce por su contenido, no por la extensión.
+
+Al hacerlo, Word gana dos cosas que antes no hacía: vacía también el responsable (`Manager`) de `docProps/app.xml`, y sustituye los datos que aparezcan en los títulos de `docProps/app.xml` y en las propiedades personalizadas (`docProps/custom.xml`).
+
+### Un número sustituido pasa a ser texto
+
+En Excel, un teléfono guardado como número que se anonimiza queda como texto con el marcador (`[TELEFONO_0001]`), porque una celda numérica no puede guardar un marcador. Al desanonimizar vuelve el valor, pero como texto: `654218903` sigue viéndose igual, aunque ya no es un número. Una fórmula que usara ese valor deja de calcular con él. Si la celda era el resultado de una fórmula, la fórmula se conserva y solo cambia el valor guardado.
+
+Las fechas se analizan tal como se ven (`31/05/1985`, en `dd/mm/aaaa`), no como el número de serie que guarda Excel. Una fecha sustituida vuelve como texto en ese formato.
+
+### Los números se analizan con el título de su columna
+
+Una celda con solo `654218903` no le dice nada al modelo: en el corpus no detectaba ninguno de los dos teléfonos guardados como número. Por eso, al analizar una celda numérica, el modelo lee delante el título de su columna (el texto de la primera fila de la hoja): `Teléfono: 654218903`. Con eso el modelo real detecta los dos. El título solo sirve de contexto: el archivo no cambia, y una entidad que caiga en el título no cuenta. No es una regla fija: sigue decidiendo el modelo.
+
+### Nombres de hoja que no caben
+
+Excel limita los nombres de hoja a 31 caracteres. Si con los marcadores no cabe, se queda solo con los marcadores que quepan («Nómina de Marta y Pablo» con dos nombres → `NOMBRE_PERSONA_0001`), y lo que no cabe se pierde también al desanonimizar. Si el nombre nuevo coincide con el de otra hoja, se le añade ` (2)`. El nombre nuevo se cambia en todas las referencias: fórmulas, nombres definidos, gráficos, tablas dinámicas, vínculos y `docProps/app.xml`.
+
+### Copias de los datos que Excel y PowerPoint guardan aparte
+
+Excel guarda copias de los valores en las cachés de los gráficos y de las tablas dinámicas, en las listas de validación y dentro de las fórmulas; PowerPoint, en las cachés de los gráficos y en el texto alternativo de imágenes y formas. Si se dejaran, el dato seguiría en el archivo aunque no se vea. En todos esos sitios se sustituyen los valores detectados en el texto (sustitución literal), como ya se hacía en Word con los enlaces. En las fórmulas solo se toca lo que va entre comillas; las referencias y las funciones no.
+
+### Qué no se procesa todavía
+
+- Las lecturas fonéticas de Excel (textos en japonés con su pronunciación) no se analizan.
+- Los libros de Excel incrustados en un gráfico o en un objeto cuentan como objeto incrustado en los avisos, pero su contenido no se revisa.
+- El corpus sintético no lleva gráficos ni comentarios de Excel, porque un archivo hecho a mano con ellos es fácil que Excel lo quiera reparar. Las pruebas unitarias sí los cubren.
