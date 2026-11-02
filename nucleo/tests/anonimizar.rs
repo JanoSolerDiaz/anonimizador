@@ -117,6 +117,7 @@ fn options(format: OutputFormat) -> AnonymizeOptions {
         format,
         model: MODEL.to_owned(),
         now: now(),
+        spreadsheet_amounts: false,
     }
 }
 
@@ -553,6 +554,7 @@ fn with_the_real_model_no_expected_value_is_left_in_the_corpus() {
                 format: OutputFormat::Docx,
                 model: model_id("modelo"),
                 now: Zoned::now(),
+                spreadsheet_amounts: false,
             },
         )
         .unwrap();

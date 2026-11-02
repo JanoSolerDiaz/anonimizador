@@ -136,6 +136,7 @@ fn a_ten_page_docx_from_end_to_end() {
                     format: OutputFormat::Docx,
                     model: model_id("modelo"),
                     now: Zoned::now(),
+                    spreadsheet_amounts: false,
                 },
             )
             .unwrap();
@@ -206,6 +207,7 @@ fn a_ten_page_docx_without_the_model() {
                 format: OutputFormat::Docx,
                 model: model_id("modelo"),
                 now: Zoned::now(),
+                spreadsheet_amounts: false,
             },
         )
         .unwrap();
@@ -247,6 +249,7 @@ fn anonymize_text(dir: &Path, store: &mut Store, n: usize) -> PathBuf {
             format: OutputFormat::Text,
             model: model_id("modelo"),
             now: Zoned::now(),
+            spreadsheet_amounts: false,
         },
     )
     .unwrap()

@@ -146,10 +146,6 @@ impl<'a> Package<'a> {
         &self.names
     }
 
-    pub fn has(&self, name: &str) -> bool {
-        self.names.iter().any(|n| n == name)
-    }
-
     /// Contenido de una parte como texto, o `None` si no existe.
     pub fn read(&mut self, name: &str) -> Result<Option<String>> {
         read_part(&mut self.archive, self.office, name)
@@ -398,23 +394,6 @@ pub(crate) fn rels_of(part: &str) -> String {
     }
 }
 
-/// Partes con un nombre `prefijoN.xml`, ordenadas por `N`.
-pub(crate) fn numbered_parts(names: &[String], prefix: &str) -> Vec<String> {
-    let number = |name: &String| -> Option<u64> {
-        name.strip_prefix(prefix)?
-            .strip_suffix(".xml")
-            .filter(|middle| !middle.is_empty() && middle.chars().all(|c| c.is_ascii_digit()))?
-            .parse()
-            .ok()
-    };
-    let mut found: Vec<(u64, String)> = names
-        .iter()
-        .filter_map(|n| Some((number(n)?, n.clone())))
-        .collect();
-    found.sort();
-    found.into_iter().map(|(_, n)| n).collect()
-}
-
 /// Archivos de relaciones de las partes de una carpeta, sin entrar en
 /// subcarpetas: `ppt/slides/_rels/*.rels`.
 pub(crate) fn is_rels_in(name: &str, folder: &str) -> bool {
@@ -451,21 +430,10 @@ mod tests {
     }
 
     #[test]
-    fn rels_and_numbered_parts() {
+    fn rels_parts() {
         assert_eq!(
             rels_of("ppt/slides/slide1.xml"),
             "ppt/slides/_rels/slide1.xml.rels"
-        );
-        let names: Vec<String> = [
-            "ppt/slides/slide10.xml",
-            "ppt/slides/slide2.xml",
-            "ppt/slides/slideLayout.xml",
-        ]
-        .map(String::from)
-        .to_vec();
-        assert_eq!(
-            numbered_parts(&names, "ppt/slides/slide"),
-            ["ppt/slides/slide2.xml", "ppt/slides/slide10.xml"]
         );
         assert!(is_rels_in("word/_rels/document.xml.rels", "word"));
         assert!(!is_rels_in("word/glossary/_rels/document.xml.rels", "word"));

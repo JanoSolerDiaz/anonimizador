@@ -1,0 +1,66 @@
+{
+  "autores": [
+    "Andrés Molina Peña",
+    "Distribuciones Ejemplo SL"
+  ],
+  "entidades": [
+    {
+      "texto": "Marta Lozano Ibáñez",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "Marta Lozano",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "48291736Q",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "654218903",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "31/05/1985",
+      "tipo": "FECHA_NACIMIENTO"
+    },
+    {
+      "texto": "2150.75",
+      "tipo": "IMPORTE"
+    },
+    {
+      "texto": "marta.lozano@correo-ejemplo.es",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "Iván Prieto Salas",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "X4721930F",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "612384907",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "14/02/1990",
+      "tipo": "FECHA_NACIMIENTO"
+    },
+    {
+      "texto": "1890",
+      "tipo": "IMPORTE"
+    },
+    {
+      "texto": "Andrés Molina Peña",
+      "tipo": "NOMBRE_PERSONA"
+    }
+  ],
+  "hoja_renombrada": [
+    "Nómina Marta Lozano",
+    "Nómina NOMBRE_PERSONA"
+  ],
+  "imagenes": 0,
+  "objetos": 0
+}

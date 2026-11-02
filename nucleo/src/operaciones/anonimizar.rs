@@ -17,9 +17,14 @@ use super::{Detector, InputFormat, OutputFormat};
 use crate::almacen::{DocumentRecord, OutputFile, SourceFile, Store};
 use crate::formatos::Replacement;
 use crate::formatos::docx::{DocxDocument, Warnings};
+use crate::formatos::pptx::PptxDocument;
 use crate::formatos::salida::{Suffix, description, save_new};
 use crate::formatos::texto::TextDocument;
+use crate::formatos::xlsx::XlsxDocument;
 use crate::{Error, Result, VERSION};
+
+/// Tipo de los importes, que en Excel no se sustituyen por defecto.
+pub const AMOUNT_KIND: &str = "IMPORTE";
 
 #[derive(Debug, Clone)]
 pub struct AnonymizeOptions {
@@ -28,6 +33,10 @@ pub struct AnonymizeOptions {
     pub model: String,
     /// Fecha y hora del proceso.
     pub now: Zoned,
+    /// En un libro de Excel los importes se dejan como están, salvo que esto
+    /// sea `true` (decisión de Jano del 2026-11-02). En los demás formatos
+    /// se sustituyen siempre que no se haya desmarcado el tipo.
+    pub spreadsheet_amounts: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,12 +51,14 @@ pub struct Summary {
 /// Documento de entrada ya leído.
 enum Source {
     Docx(DocxDocument),
+    Pptx(PptxDocument),
+    Xlsx(XlsxDocument),
     Text(TextDocument),
 }
 
 /// Anonimiza `input` y deja la salida en `dir` con el nombre
-/// `descripción_anonimizado.ext`, sin sobrescribir nada. DOCX sale en DOCX,
-/// MD o TXT; MD y TXT, en MD o TXT.
+/// `descripción_anonimizado.ext`, sin sobrescribir nada. DOCX, PPTX y XLSX
+/// salen en su formato, en MD o en TXT; MD y TXT, en MD o TXT.
 pub fn anonymize(
     input: &Path,
     dir: &Path,
@@ -57,7 +68,7 @@ pub fn anonymize(
 ) -> Result<Summary> {
     let bytes = std::fs::read(input)?;
     let format = InputFormat::detect(input, &bytes)?;
-    if format != InputFormat::Docx && options.format == OutputFormat::Docx {
+    if !format.can_become(options.format) {
         return Err(Error::UnsupportedConversion {
             from: format.label(),
             to: options.format.label(),
@@ -65,6 +76,8 @@ pub fn anonymize(
     }
     let source = match format {
         InputFormat::Docx => Source::Docx(DocxDocument::from_bytes(&bytes)?),
+        InputFormat::Pptx => Source::Pptx(PptxDocument::from_bytes(&bytes)?),
+        InputFormat::Xlsx => Source::Xlsx(XlsxDocument::from_bytes(&bytes)?),
         InputFormat::Markdown | InputFormat::Text => {
             Source::Text(TextDocument::from_bytes(&bytes)?)
         }
@@ -75,9 +88,46 @@ pub fn anonymize(
             .iter()
             .map(|s| s.text.as_str())
             .collect(),
+        Source::Pptx(document) => document
+            .segments()
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect(),
+        Source::Xlsx(document) => document
+            .segments()
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect(),
         Source::Text(document) => document.segments(),
     };
-    let mut entities = detector.detect(&segments)?;
+    let mut entities = match &source {
+        // Los números de Excel se analizan con el título de su columna
+        // delante; las entidades vuelven a las posiciones del segmento.
+        Source::Xlsx(document) => {
+            let with_context = document.detection_texts();
+            let texts: Vec<&str> = with_context.iter().map(|(t, _)| t.as_str()).collect();
+            let mut entities = detector.detect(&texts)?;
+            entities.retain_mut(|e| {
+                let prefix = with_context[e.segment].1;
+                if e.end <= prefix {
+                    return false;
+                }
+                e.start = e.start.max(prefix) - prefix;
+                e.end -= prefix;
+                e.text = segments[e.segment]
+                    .chars()
+                    .skip(e.start)
+                    .take(e.end - e.start)
+                    .collect();
+                true
+            });
+            entities
+        }
+        _ => detector.detect(&segments)?,
+    };
+    if matches!(source, Source::Xlsx(_)) && !options.spreadsheet_amounts {
+        entities.retain(|e| e.kind != AMOUNT_KIND);
+    }
     // Los marcadores se numeran en orden de aparición.
     entities.sort_by_key(|e| (e.segment, e.start));
 
@@ -141,6 +191,8 @@ pub fn anonymize(
     });
     let warnings = match &source {
         Source::Docx(document) => document.warnings(),
+        Source::Pptx(document) => document.warnings(),
+        Source::Xlsx(document) => document.warnings(),
         Source::Text(_) => Warnings::default(),
     };
     tracing::info!(
@@ -163,14 +215,17 @@ fn output_bytes(
     replacements: &[Replacement],
     literals: &[(String, String)],
 ) -> Result<Vec<u8>> {
+    let text = |result: Result<String>| result.map(String::into_bytes);
     match (source, format) {
-        (Source::Docx(document), OutputFormat::Docx) => document.write(replacements, literals),
-        (Source::Docx(document), OutputFormat::Markdown) => {
-            document.markdown(replacements).map(String::into_bytes)
-        }
-        (Source::Docx(document), OutputFormat::Text) => {
-            document.plain_text(replacements).map(String::into_bytes)
-        }
+        (Source::Docx(document), OutputFormat::Markdown) => text(document.markdown(replacements)),
+        (Source::Docx(document), OutputFormat::Text) => text(document.plain_text(replacements)),
+        (Source::Docx(document), _) => document.write(replacements, literals),
+        (Source::Pptx(document), OutputFormat::Markdown) => text(document.markdown(replacements)),
+        (Source::Pptx(document), OutputFormat::Text) => text(document.plain_text(replacements)),
+        (Source::Pptx(document), _) => document.write(replacements, literals),
+        (Source::Xlsx(document), OutputFormat::Markdown) => text(document.markdown(replacements)),
+        (Source::Xlsx(document), OutputFormat::Text) => text(document.plain_text(replacements)),
+        (Source::Xlsx(document), _) => document.write(replacements, literals),
         // MD y TXT son el mismo texto: solo cambia la extensión.
         (Source::Text(document), _) => document.write(replacements),
     }

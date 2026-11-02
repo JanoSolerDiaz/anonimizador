@@ -8,6 +8,7 @@ pub mod marcadores;
 
 use std::path::Path;
 
+use crate::formatos::ooxml::Office;
 use crate::motor::{Engine, Entity};
 use crate::{Error, Result};
 
@@ -15,7 +16,7 @@ use crate::{Error, Result};
 /// del modelo que se anota en el almacén.
 const RESOURCES_LOCK: &str = include_str!("../../../scripts/recursos.lock.json");
 
-/// Cabecera de un archivo ZIP, que es lo que es un DOCX.
+/// Cabecera de un archivo ZIP, que es lo que es un DOCX, un PPTX o un XLSX.
 const ZIP_SIGNATURE: &[u8] = b"PK\x03\x04";
 
 /// Lo que encuentra los datos personales de unos segmentos. Lo hace el
@@ -34,23 +35,34 @@ impl Detector for Engine {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputFormat {
     Docx,
+    Pptx,
+    Xlsx,
     Markdown,
     Text,
 }
 
 impl InputFormat {
-    /// Un DOCX se reconoce por su contenido; MD y TXT, por la extensión.
+    /// DOCX, PPTX y XLSX se reconocen por su contenido; MD y TXT, por la
+    /// extensión. Un archivo de Office 97-2003 (`.doc`, `.ppt`, `.xls`) se
+    /// rechaza con un error que explica cómo convertirlo.
     pub fn detect(path: &Path, bytes: &[u8]) -> Result<InputFormat> {
-        if bytes.starts_with(ZIP_SIGNATURE) {
-            return Ok(InputFormat::Docx);
-        }
         let extension = path
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
+        if bytes.starts_with(ZIP_SIGNATURE)
+            && let Some(office) = Office::of_package(bytes)
+        {
+            return Ok(InputFormat::of_office(office));
+        }
         match extension.as_str() {
-            // Un DOCX con contraseña no es un ZIP: lo distingue el extractor.
+            // Uno con contraseña no es un ZIP: lo distingue el extractor.
             "docx" => Ok(InputFormat::Docx),
+            "pptx" => Ok(InputFormat::Pptx),
+            "xlsx" => Ok(InputFormat::Xlsx),
+            "doc" => Err(Error::OldOfficeFormat(Office::Word)),
+            "ppt" => Err(Error::OldOfficeFormat(Office::PowerPoint)),
+            "xls" => Err(Error::OldOfficeFormat(Office::Excel)),
             "md" | "markdown" => Ok(InputFormat::Markdown),
             "txt" => Ok(InputFormat::Text),
             "" => Err(Error::UnsupportedFormat("sin extensión".into())),
@@ -58,12 +70,39 @@ impl InputFormat {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            InputFormat::Docx => "DOCX",
-            InputFormat::Markdown => "MD",
-            InputFormat::Text => "TXT",
+    fn of_office(office: Office) -> InputFormat {
+        match office {
+            Office::Word => InputFormat::Docx,
+            Office::PowerPoint => InputFormat::Pptx,
+            Office::Excel => InputFormat::Xlsx,
         }
+    }
+
+    pub fn label(self) -> &'static str {
+        self.same_output().label()
+    }
+
+    /// Extensión del archivo de este formato.
+    pub fn extension(self) -> &'static str {
+        self.same_output().extension()
+    }
+
+    /// El formato de salida que conserva el formato de entrada.
+    pub fn same_output(self) -> OutputFormat {
+        match self {
+            InputFormat::Docx => OutputFormat::Docx,
+            InputFormat::Pptx => OutputFormat::Pptx,
+            InputFormat::Xlsx => OutputFormat::Xlsx,
+            InputFormat::Markdown => OutputFormat::Markdown,
+            InputFormat::Text => OutputFormat::Text,
+        }
+    }
+
+    /// Si se puede entregar en `output`: cada formato de Office en el suyo,
+    /// y todos en MD y TXT.
+    pub fn can_become(self, output: OutputFormat) -> bool {
+        matches!(output, OutputFormat::Markdown | OutputFormat::Text)
+            || self.same_output() == output
     }
 }
 
@@ -71,6 +110,8 @@ impl InputFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputFormat {
     Docx,
+    Pptx,
+    Xlsx,
     Markdown,
     Text,
 }
@@ -80,6 +121,8 @@ impl OutputFormat {
     pub fn extension(self) -> &'static str {
         match self {
             OutputFormat::Docx => "docx",
+            OutputFormat::Pptx => "pptx",
+            OutputFormat::Xlsx => "xlsx",
             OutputFormat::Markdown => "md",
             OutputFormat::Text => "txt",
         }
@@ -88,6 +131,8 @@ impl OutputFormat {
     pub fn label(self) -> &'static str {
         match self {
             OutputFormat::Docx => "DOCX",
+            OutputFormat::Pptx => "PPTX",
+            OutputFormat::Xlsx => "XLSX",
             OutputFormat::Markdown => "MD",
             OutputFormat::Text => "TXT",
         }

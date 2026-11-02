@@ -2,7 +2,6 @@
 //! no detiene el resto del lote; el almacén se guarda una vez, al final.
 
 use std::cell::OnceCell;
-use std::io::Read;
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -53,12 +52,15 @@ struct AnonymizeArgs<'a> {
     store: Option<&'a str>,
     model: &'a str,
     options: EngineOptions,
+    /// En Excel, sustituir también los importes.
+    spreadsheet_amounts: bool,
 }
 
 impl<'a> AnonymizeArgs<'a> {
     fn parse(args: &'a [String]) -> Result<Self, ArgsError> {
         let mut files = Vec::new();
         let (mut dir, mut format, mut store) = (None, None, None);
+        let mut spreadsheet_amounts = false;
         let mut model = DEFAULT_MODEL;
         let mut options = EngineOptions::default();
         let mut args = args.iter().map(String::as_str);
@@ -72,11 +74,14 @@ impl<'a> AnonymizeArgs<'a> {
                 "--formato" => {
                     format = Some(match args.next() {
                         Some("docx") => OutputFormat::Docx,
+                        Some("pptx") => OutputFormat::Pptx,
+                        Some("xlsx") => OutputFormat::Xlsx,
                         Some("md") => OutputFormat::Markdown,
                         Some("txt") => OutputFormat::Text,
                         _ => return Err(ArgsError::Usage),
                     })
                 }
+                "--sustituir-importes" => spreadsheet_amounts = true,
                 "--no-sustituir" => {
                     let list = args.next().ok_or(ArgsError::Usage)?;
                     let kinds: Vec<&str> = list
@@ -100,6 +105,7 @@ impl<'a> AnonymizeArgs<'a> {
             store,
             model,
             options,
+            spreadsheet_amounts,
         })
     }
 }
@@ -126,6 +132,7 @@ pub fn anonymize_files(args: &[String]) -> ExitCode {
             format: args.format.unwrap_or_else(|| same_format(path)),
             model: model.clone(),
             now: Zoned::now(),
+            spreadsheet_amounts: args.spreadsheet_amounts,
         };
         match anonymize(
             path,
@@ -176,15 +183,11 @@ pub fn anonymize_files(args: &[String]) -> ExitCode {
 
 /// Sin `--formato`, cada archivo sale en su formato.
 fn same_format(path: &Path) -> OutputFormat {
-    let mut head = Vec::new();
-    if let Ok(file) = std::fs::File::open(path) {
-        let _ = file.take(8).read_to_end(&mut head);
-    }
-    match InputFormat::detect(path, &head) {
-        Ok(InputFormat::Docx) => OutputFormat::Docx,
-        Ok(InputFormat::Markdown) => OutputFormat::Markdown,
-        _ => OutputFormat::Text,
-    }
+    // Un paquete de Office se reconoce por su contenido: hace falta entero.
+    let bytes = std::fs::read(path).unwrap_or_default();
+    InputFormat::detect(path, &bytes)
+        .map(InputFormat::same_output)
+        .unwrap_or(OutputFormat::Text)
 }
 
 /// Qué desanonimizar: archivos o texto pegado.

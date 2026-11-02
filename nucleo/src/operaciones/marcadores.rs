@@ -39,6 +39,47 @@ pub fn find_markers(text: &str) -> Vec<FoundMarker> {
     found
 }
 
+/// Marcadores sin corchetes, como los de los nombres de hoja de Excel, que no
+/// admiten corchetes: `Nómina NOMBRE_PERSONA_0001`. Una palabra entera con un
+/// guion bajo que, entre corchetes, sería un marcador completo. Las formas
+/// cortas no cuentan: `P42` sin corchetes es demasiado corriente.
+pub fn find_bare_markers(text: &str) -> Vec<FoundMarker> {
+    let chars: Vec<char> = text.chars().collect();
+    let is_word = |c: char| c.is_alphanumeric() || c == '_';
+    let mut found = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_ascii_alphabetic() || (i > 0 && is_word(chars[i - 1])) {
+            i += 1;
+            continue;
+        }
+        let mut j = i;
+        while j < chars.len() && (chars[j].is_ascii_alphanumeric() || chars[j] == '_') {
+            j += 1;
+        }
+        let whole = j == chars.len() || !is_word(chars[j]);
+        if whole && chars[i..j].contains(&'_') {
+            let wrapped: Vec<char> = std::iter::once('[')
+                .chain(chars[i..j].iter().copied())
+                .chain(std::iter::once(']'))
+                .collect();
+            if let Some(marker) = marker_at(&wrapped, 0)
+                && !marker.short
+                && marker.end == wrapped.len()
+            {
+                found.push(FoundMarker {
+                    start: i,
+                    end: j,
+                    key: marker.key,
+                    short: false,
+                });
+            }
+        }
+        i = j.max(i + 1);
+    }
+    found
+}
+
 /// Forma canónica de un marcador escrito de cualquier manera, o el texto tal
 /// cual si no es un marcador.
 pub fn canonical(marker: &str) -> String {

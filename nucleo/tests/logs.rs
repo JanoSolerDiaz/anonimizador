@@ -326,6 +326,7 @@ fn anonymizing_and_deanonymizing_never_log_document_text_or_store_values() {
             format,
             model: model_id("modelo"),
             now: Zoned::now(),
+            spreadsheet_amounts: false,
         };
         let out = dir.path().join("salida");
         std::fs::create_dir(&out).unwrap();

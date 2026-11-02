@@ -40,9 +40,12 @@ const USAGE: &str = "Uso:
       --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
       --detalle                      lista las entidades no detectadas y las de más
   cli anonimizar <archivos…> --salida <carpeta> [opciones]
-      --formato docx|md|txt          formato de salida (por defecto: el de cada archivo;
-                                     MD y TXT no pueden salir en DOCX)
+      DOCX, PPTX, XLSX, MD o TXT
+      --formato docx|pptx|xlsx|md|txt
+                                     formato de salida (por defecto: el de cada archivo;
+                                     Word, PowerPoint y Excel salen en el suyo, en MD o en TXT)
       --almacen <archivo>            almacén cifrado (por defecto: el de la carpeta de datos del usuario)
+      --sustituir-importes           en Excel, sustituye también los importes
       --no-sustituir, --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
   cli desanonimizar <archivos…> --salida <carpeta> [opciones]
   cli desanonimizar --texto \"…\" [opciones]

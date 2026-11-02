@@ -12,13 +12,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use super::InputFormat;
-use super::marcadores::{FoundMarker, canonical, find_markers};
+use super::marcadores::{FoundMarker, canonical, find_bare_markers, find_markers};
 use crate::Result;
 use crate::almacen::Store;
 use crate::formatos::Replacement;
 use crate::formatos::docx::DocxDocument;
+use crate::formatos::pptx::PptxDocument;
 use crate::formatos::salida::{Suffix, description, save_new};
 use crate::formatos::texto::TextDocument;
+use crate::formatos::xlsx::{XlsxDocument, XlsxKind};
 use crate::motor::tipos::TypeTable;
 
 /// De dónde sale el valor de un marcador.
@@ -75,7 +77,7 @@ pub fn deanonymize_text(
     source: Option<&MarkerSource>,
 ) -> Result<Outcome<(String, Report)>> {
     let document = TextDocument::from_bytes(text.as_bytes())?;
-    let plan = match plan(&document.segments(), &[], store, source) {
+    let plan = match plan(&document.segments(), &[], &[], store, source) {
         Outcome::Done(plan) => plan,
         Outcome::Conflicts(conflicts) => return Ok(Outcome::Conflicts(conflicts)),
     };
@@ -110,7 +112,52 @@ pub fn deanonymize(
                 .map(|l| l.target.as_str())
                 .chain(document.field_codes().iter().map(|f| f.text.as_str()))
                 .collect();
-            let plan = match plan(&segments, &extra, store, source) {
+            let plan = match plan(&segments, &extra, &[], store, source) {
+                Outcome::Done(plan) => plan,
+                Outcome::Conflicts(conflicts) => return Ok(Outcome::Conflicts(conflicts)),
+            };
+            (
+                document.write(&plan.replacements, &plan.literals)?,
+                plan.report,
+            )
+        }
+        InputFormat::Pptx => {
+            let document = PptxDocument::from_bytes(&bytes)?;
+            let segments: Vec<&str> = document
+                .segments()
+                .iter()
+                .map(|s| s.text.as_str())
+                .collect();
+            let plan = match plan(&segments, &document.literal_texts(), &[], store, source) {
+                Outcome::Done(plan) => plan,
+                Outcome::Conflicts(conflicts) => return Ok(Outcome::Conflicts(conflicts)),
+            };
+            (
+                document.write(&plan.replacements, &plan.literals)?,
+                plan.report,
+            )
+        }
+        InputFormat::Xlsx => {
+            let document = XlsxDocument::from_bytes(&bytes)?;
+            let segments: Vec<&str> = document
+                .segments()
+                .iter()
+                .map(|s| s.text.as_str())
+                .collect();
+            let sheet_names: Vec<usize> = document
+                .segments()
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| s.kind == XlsxKind::SheetName)
+                .map(|(i, _)| i)
+                .collect();
+            let plan = match plan(
+                &segments,
+                &document.literal_texts(),
+                &sheet_names,
+                store,
+                source,
+            ) {
                 Outcome::Done(plan) => plan,
                 Outcome::Conflicts(conflicts) => return Ok(Outcome::Conflicts(conflicts)),
             };
@@ -121,18 +168,14 @@ pub fn deanonymize(
         }
         InputFormat::Markdown | InputFormat::Text => {
             let document = TextDocument::from_bytes(&bytes)?;
-            let plan = match plan(&document.segments(), &[], store, source) {
+            let plan = match plan(&document.segments(), &[], &[], store, source) {
                 Outcome::Done(plan) => plan,
                 Outcome::Conflicts(conflicts) => return Ok(Outcome::Conflicts(conflicts)),
             };
             (document.write(&plan.replacements)?, plan.report)
         }
     };
-    let extension = match format {
-        InputFormat::Docx => "docx",
-        InputFormat::Markdown => "md",
-        InputFormat::Text => "txt",
-    };
+    let extension = format.extension();
     let output = save_new(
         dir,
         &description(input),
@@ -145,10 +188,13 @@ pub fn deanonymize(
 }
 
 /// Busca los marcadores de los segmentos y de los textos de `extra`
-/// (enlaces y códigos de campo, que solo admiten sustitución literal).
+/// (enlaces, códigos de campo, fórmulas y cachés, que solo admiten
+/// sustitución literal). En los segmentos de `bare` (nombres de hoja de
+/// Excel) busca también marcadores sin corchetes.
 fn plan(
     segments: &[&str],
     extra: &[&str],
+    bare: &[usize],
     store: &Store,
     source: Option<&MarkerSource>,
 ) -> Outcome<Plan> {
@@ -164,7 +210,17 @@ fn plan(
         .map(|(index, text)| (Some(index), *text))
         .chain(extra.iter().map(|text| (None, *text)));
     for (segment, text) in texts {
-        for found in find_markers(text) {
+        let mut markers = find_markers(text);
+        if segment.is_some_and(|s| bare.contains(&s)) {
+            let bracketed = markers.clone();
+            markers.extend(
+                find_bare_markers(text)
+                    .into_iter()
+                    .filter(|b| !bracketed.iter().any(|m| m.start < b.end && b.start < m.end)),
+            );
+            markers.sort_by_key(|m| m.start);
+        }
+        for found in markers {
             match lookup(&found, store, source) {
                 Lookup::Value(value) => {
                     push_unique(&mut plan.report.restored, &found.key);

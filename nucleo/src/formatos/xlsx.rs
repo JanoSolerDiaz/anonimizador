@@ -129,6 +129,9 @@ pub struct XlsxDocument {
     fragments: HashMap<String, Vec<String>>,
     /// Segmento numérico → parte y número de la celda en la parte.
     numbers: HashMap<usize, (String, usize)>,
+    /// Segmento numérico → título de su columna, que se le da al modelo como
+    /// contexto («Teléfono: 654218903»).
+    headers: HashMap<usize, String>,
     /// Partes que se reescriben con sus reglas.
     shared_part: Option<String>,
     links: Vec<ExternalLink>,
@@ -148,6 +151,7 @@ impl XlsxDocument {
             sheets: Vec::new(),
             fragments: HashMap::new(),
             numbers: HashMap::new(),
+            headers: HashMap::new(),
             shared_part: None,
             links: Vec::new(),
             literal_texts: Vec::new(),
@@ -276,6 +280,31 @@ impl XlsxDocument {
                     map,
                     breaks: Vec::new(),
                 });
+            }
+            // El título de cada columna: el texto de la primera fila.
+            let first_row = cells.iter().map(|c| c.row).min();
+            let titles: HashMap<usize, String> = cells
+                .iter()
+                .filter(|c| Some(c.row) == first_row)
+                .filter_map(|c| match &c.content {
+                    Content::Text { segment, original }
+                        if !original.trim().is_empty()
+                            && !segment.is_some_and(|s| document.numbers.contains_key(&s)) =>
+                    {
+                        Some((c.column, original.trim().to_owned()))
+                    }
+                    _ => None,
+                })
+                .collect();
+            for c in cells.iter().filter(|c| Some(c.row) != first_row) {
+                if let Content::Text {
+                    segment: Some(s), ..
+                } = &c.content
+                    && document.numbers.contains_key(s)
+                    && let Some(title) = titles.get(&c.column)
+                {
+                    document.headers.insert(*s, title.clone());
+                }
             }
             document.fragments.insert(part.clone(), read.fragments);
             document.sheets.push(Sheet {
@@ -516,6 +545,26 @@ impl XlsxDocument {
 
     pub fn segments(&self) -> &[XlsxSegment] {
         &self.segments
+    }
+
+    /// Texto que se le da al modelo para cada segmento y cuántos caracteres
+    /// de contexto lleva delante. Un número solo («654218903») no le dice
+    /// nada al modelo: se le pasa con el título de su columna
+    /// («Teléfono: 654218903»). El contexto no es parte del segmento: una
+    /// entidad que caiga en él no cuenta.
+    pub fn detection_texts(&self) -> Vec<(String, usize)> {
+        self.segments
+            .iter()
+            .enumerate()
+            .map(|(index, s)| match self.headers.get(&index) {
+                Some(title) => {
+                    let prefix = format!("{title}: ");
+                    let length = prefix.chars().count();
+                    (prefix + &s.text, length)
+                }
+                None => (s.text.clone(), 0),
+            })
+            .collect()
     }
 
     pub fn external_links(&self) -> &[ExternalLink] {

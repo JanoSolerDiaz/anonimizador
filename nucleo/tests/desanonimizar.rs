@@ -338,6 +338,7 @@ fn anonymize_options(format: OutputFormat) -> AnonymizeOptions {
         format,
         model: "modelo".into(),
         now: Zoned::now(),
+        spreadsheet_amounts: false,
     }
 }
 

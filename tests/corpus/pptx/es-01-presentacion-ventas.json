@@ -1,0 +1,51 @@
+{
+  "autores": [
+    "Andrés Molina Peña",
+    "AM",
+    "Distribuciones Ejemplo SL"
+  ],
+  "entidades": [
+    {
+      "texto": "Marta Lozano Ibáñez",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "48291736Q",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "654 218 903",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "marta.lozano@correo-ejemplo.es",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "Calle del Coso 87, 50001 Zaragoza",
+      "tipo": "DIRECCION_POSTAL"
+    },
+    {
+      "texto": "Iván Prieto Salas",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "612 384 907",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "Lucía Ferrer Gil",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "699 112 233",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "Andrés Molina Peña",
+      "tipo": "NOMBRE_PERSONA"
+    }
+  ],
+  "imagenes": 1,
+  "objetos": 0
+}

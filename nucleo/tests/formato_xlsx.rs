@@ -224,6 +224,19 @@ fn cells_come_row_by_row_after_the_name_of_their_sheet() {
 }
 
 #[test]
+fn numbers_reach_the_model_with_the_title_of_their_column() {
+    let document = XlsxDocument::from_bytes(&sample()).unwrap();
+    let texts = document.detection_texts();
+    let phone = nth(&document, "654218903", 0);
+    assert_eq!(texts[phone], ("Teléfono: 654218903".to_owned(), 10));
+    let date = nth(&document, "14/02/2025", 0);
+    assert_eq!(texts[date], ("Alta: 14/02/2025".to_owned(), 6));
+    // Los textos y los números sin título van tal cual.
+    let name = nth(&document, "Marta Lozano", 0);
+    assert_eq!(texts[name], ("Marta Lozano".to_owned(), 0));
+}
+
+#[test]
 fn authors_formulas_and_caches_are_collected() {
     let document = XlsxDocument::from_bytes(&sample()).unwrap();
     assert_eq!(
