@@ -139,6 +139,9 @@ pub struct DocumentRecord {
 #[derive(Debug)]
 pub struct Store {
     counters: BTreeMap<String, u32>,
+    /// Último número de forma corta usado con cada inicial (`N` → 2 tras
+    /// `[N2]`). Como `counters`, no baja nunca.
+    short_counters: BTreeMap<String, u32>,
     entries: Vec<StoreEntry>,
     documents: Vec<DocumentRecord>,
     imported: Vec<ImportedDictionary>,
@@ -153,6 +156,7 @@ impl Default for Store {
     fn default() -> Self {
         Store {
             counters: BTreeMap::new(),
+            short_counters: BTreeMap::new(),
             entries: Vec::new(),
             documents: Vec::new(),
             imported: Vec::new(),
@@ -176,6 +180,8 @@ struct StoreJsonOut<'a> {
     formato: &'static str,
     version_formato: u32,
     contadores: &'a BTreeMap<String, u32>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    contadores_cortos: &'a BTreeMap<String, u32>,
     entradas: &'a [StoreEntry],
     documentos: &'a [DocumentRecord],
     importados: &'a [ImportedDictionary],
@@ -184,6 +190,9 @@ struct StoreJsonOut<'a> {
 #[derive(Deserialize)]
 struct StoreJsonIn {
     contadores: BTreeMap<String, u32>,
+    /// Falta en los almacenes que nunca usaron una forma corta.
+    #[serde(default)]
+    contadores_cortos: BTreeMap<String, u32>,
     entradas: Vec<StoreEntry>,
     documentos: Vec<DocumentRecord>,
     importados: Vec<ImportedDictionary>,
@@ -221,6 +230,7 @@ impl Store {
         let data: StoreJsonIn = serde_json::from_slice(bytes).map_err(json_error)?;
         let mut store = Store {
             counters: data.contadores,
+            short_counters: data.contadores_cortos,
             entries: data.entradas,
             documents: data.documentos,
             imported: data.importados,
@@ -253,6 +263,14 @@ impl Store {
                 ));
             }
         }
+        // Un almacén puede traer formas cortas sin su contador (el ejemplo
+        // del PRD, `[P42]`): el contador se pone a su altura para no repetir.
+        for entry in &store.entries {
+            if let Some((letter, number)) = entry.short_form.as_deref().and_then(short_parts) {
+                let counter = store.short_counters.entry(letter).or_insert(0);
+                *counter = (*counter).max(number);
+            }
+        }
         Ok(store)
     }
 
@@ -262,6 +280,7 @@ impl Store {
             formato: STORE_FORMAT,
             version_formato: STORE_FORMAT_VERSION,
             contadores: &self.counters,
+            contadores_cortos: &self.short_counters,
             entradas: &self.entries,
             documentos: &self.documents,
             importados: &self.imported,
@@ -307,6 +326,24 @@ impl Store {
             }
         };
         &self.entries[index].marker
+    }
+
+    /// Forma corta del marcador (`[N2]`), para cuando el completo no cabe en
+    /// un PDF. Si aún no tiene, se le da la inicial de su tipo con el
+    /// siguiente número de esa inicial y queda guardada en la entrada.
+    /// `None` si el marcador no está en el almacén.
+    pub fn short_form(&mut self, marker: &str) -> Option<String> {
+        let &index = self.by_marker.get(marker)?;
+        let entry = &mut self.entries[index];
+        if let Some(short) = &entry.short_form {
+            return Some(short.clone());
+        }
+        let letter: String = entry.kind.chars().take(1).collect();
+        let counter = self.short_counters.entry(letter.clone()).or_insert(0);
+        *counter += 1;
+        let short = format!("[{letter}{counter}]");
+        entry.short_form = Some(short.clone());
+        Some(short)
     }
 
     /// Guarda un documento procesado. Si ya había uno con el mismo
@@ -420,4 +457,15 @@ fn json_problem(error: &serde_json::Error) -> String {
         error.line(),
         error.column()
     )
+}
+
+/// Inicial y número de una forma corta: `[N2]` → (`N`, 2).
+fn short_parts(short: &str) -> Option<(String, u32)> {
+    let inner = short.strip_prefix('[')?.strip_suffix(']')?;
+    let digits = inner.trim_start_matches(|c: char| c.is_ascii_alphabetic());
+    let letters = &inner[..inner.len() - digits.len()];
+    if letters.is_empty() {
+        return None;
+    }
+    Some((letters.to_owned(), digits.parse().ok()?))
 }

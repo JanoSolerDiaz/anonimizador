@@ -100,10 +100,13 @@ fn a_store_without_short_counters_continues_after_its_short_forms() {
 #[test]
 fn deanonymizing_finds_the_value_of_a_short_form() {
     let mut store = Store::new();
-    store.assign("NOMBRE_PERSONA", "PERSON_NAME", "Marta Lozano", DOC);
+    let person = store
+        .assign("NOMBRE_PERSONA", "PERSON_NAME", "Marta Lozano", DOC)
+        .to_owned();
     let proper = store
         .assign("NOMBRE_PROPIO", "PROPER_NAME", "Proyecto Faro", DOC)
         .to_owned();
+    store.short_form(&person);
     store.short_form(&proper);
     match deanonymize_text("Firmado en [ n2 ].", &store, None).unwrap() {
         Outcome::Done((text, _)) => assert_eq!(text, "Firmado en Proyecto Faro."),
