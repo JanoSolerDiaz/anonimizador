@@ -98,8 +98,33 @@ pub enum Error {
     )]
     OldOfficeFormat(Office),
 
-    #[error("El formato «{0}» no se admite; use DOCX, PPTX, XLSX, MD o TXT.")]
+    #[error("El formato «{0}» no se admite; use PDF, DOCX, PPTX, XLSX, MD o TXT.")]
     UnsupportedFormat(String),
+
+    #[error("El PDF está protegido con contraseña; quite la contraseña y vuelva a intentarlo.")]
+    PdfProtected,
+
+    #[error("El archivo no es un PDF válido: {0}.")]
+    InvalidPdf(String),
+
+    #[error("Este PDF contiene páginas escaneadas. La v1 no puede anonimizarlas.")]
+    ScannedPdf,
+
+    #[error("No se ha podido procesar el PDF: {0}.")]
+    Pdf(String),
+
+    #[error(
+        "La comprobación final ha encontrado un dato original en el PDF anonimizado; la salida se ha borrado."
+    )]
+    PdfVerificationFailed,
+
+    #[error("La resolución debe estar entre 150 y 300 ppp; se ha pedido {0}.")]
+    InvalidResolution(u32),
+
+    #[error(
+        "Un PDF no se puede desanonimizar; desanonimice el DOCX, MD o TXT que se sacó de él, o el texto copiado."
+    )]
+    PdfNotDeanonymizable,
 
     #[error("Un archivo {from} no se puede convertir a {to}.")]
     UnsupportedConversion {
@@ -145,6 +170,13 @@ mod tests {
             Error::InvalidOffice(Office::Excel, "detalle".into()),
             Error::OldOfficeFormat(Office::PowerPoint),
             Error::UnsupportedFormat("rtf".into()),
+            Error::PdfProtected,
+            Error::InvalidPdf("detalle".into()),
+            Error::ScannedPdf,
+            Error::Pdf("detalle".into()),
+            Error::PdfVerificationFailed,
+            Error::InvalidResolution(400),
+            Error::PdfNotDeanonymizable,
             Error::UnsupportedConversion {
                 from: "TXT",
                 to: "DOCX",

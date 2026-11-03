@@ -21,6 +21,11 @@ ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "
 
 # Versión de API fijada a la de los binarios de PDFium descargados (chromium/7881).
 pdfium-render = { version = "=0.9.4", default-features = false, features = ["pdfium_7881", "image_latest", "thread_safe"] }
+# La misma versión que usa pdfium-render, sin códecs: solo se pintan los
+# rectángulos sobre la página renderizada, que PDFium guarda comprimida.
+image = { version = "0.25.10", default-features = false }
+# DOCX desde un PDF. Sin `image`: el texto va sin imágenes.
+docx-rs = { version = "0.4.22", default-features = false }
 tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
 unicode-normalization = "0.1.26"
 serde_json = "1.0.154"
