@@ -40,10 +40,12 @@ const USAGE: &str = "Uso:
       --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades
       --detalle                      lista las entidades no detectadas y las de más
   cli anonimizar <archivos…> --salida <carpeta> [opciones]
-      DOCX, PPTX, XLSX, MD o TXT
-      --formato docx|pptx|xlsx|md|txt
+      PDF, DOCX, PPTX, XLSX, MD o TXT
+      --formato pdf|docx|pptx|xlsx|md|txt
                                      formato de salida (por defecto: el de cada archivo;
-                                     Word, PowerPoint y Excel salen en el suyo, en MD o en TXT)
+                                     Word, PowerPoint y Excel salen en el suyo, en MD o en TXT;
+                                     PDF, en PDF, DOCX, MD o TXT)
+      --ppp <150-300>                resolución de las páginas de PDF con datos (por defecto: 200)
       --almacen <archivo>            almacén cifrado (por defecto: el de la carpeta de datos del usuario)
       --sustituir-importes           en Excel, sustituye también los importes
       --no-sustituir, --modelo, --decodificacion, --umbral, --hilos y --contexto como en entidades

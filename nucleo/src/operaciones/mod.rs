@@ -9,6 +9,7 @@ pub mod marcadores;
 use std::path::Path;
 
 use crate::formatos::ooxml::Office;
+use crate::formatos::pdf::is_pdf;
 use crate::motor::{Engine, Entity};
 use crate::{Error, Result};
 
@@ -34,6 +35,7 @@ impl Detector for Engine {
 /// Formato del archivo de entrada.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputFormat {
+    Pdf,
     Docx,
     Pptx,
     Xlsx,
@@ -42,7 +44,7 @@ pub enum InputFormat {
 }
 
 impl InputFormat {
-    /// DOCX, PPTX y XLSX se reconocen por su contenido; MD y TXT, por la
+    /// PDF, DOCX, PPTX y XLSX se reconocen por su contenido; MD y TXT, por la
     /// extensión. Un archivo de Office 97-2003 (`.doc`, `.ppt`, `.xls`) se
     /// rechaza con un error que explica cómo convertirlo.
     pub fn detect(path: &Path, bytes: &[u8]) -> Result<InputFormat> {
@@ -50,12 +52,16 @@ impl InputFormat {
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
+        if is_pdf(bytes) {
+            return Ok(InputFormat::Pdf);
+        }
         if bytes.starts_with(ZIP_SIGNATURE)
             && let Some(office) = Office::of_package(bytes)
         {
             return Ok(InputFormat::of_office(office));
         }
         match extension.as_str() {
+            "pdf" => Err(Error::InvalidPdf("no empieza como un PDF".into())),
             // Uno con contraseña no es un ZIP: lo distingue el extractor.
             "docx" => Ok(InputFormat::Docx),
             "pptx" => Ok(InputFormat::Pptx),
@@ -90,6 +96,7 @@ impl InputFormat {
     /// El formato de salida que conserva el formato de entrada.
     pub fn same_output(self) -> OutputFormat {
         match self {
+            InputFormat::Pdf => OutputFormat::Pdf,
             InputFormat::Docx => OutputFormat::Docx,
             InputFormat::Pptx => OutputFormat::Pptx,
             InputFormat::Xlsx => OutputFormat::Xlsx,
@@ -98,17 +105,19 @@ impl InputFormat {
         }
     }
 
-    /// Si se puede entregar en `output`: cada formato de Office en el suyo,
-    /// y todos en MD y TXT.
+    /// Si se puede entregar en `output`: cada formato en el suyo, todos en MD
+    /// y TXT, y el PDF también en DOCX.
     pub fn can_become(self, output: OutputFormat) -> bool {
         matches!(output, OutputFormat::Markdown | OutputFormat::Text)
             || self.same_output() == output
+            || (self == InputFormat::Pdf && output == OutputFormat::Docx)
     }
 }
 
 /// Formato del archivo de salida.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputFormat {
+    Pdf,
     Docx,
     Pptx,
     Xlsx,
@@ -120,6 +129,7 @@ impl OutputFormat {
     /// Extensión del archivo, que es también el formato en el almacén.
     pub fn extension(self) -> &'static str {
         match self {
+            OutputFormat::Pdf => "pdf",
             OutputFormat::Docx => "docx",
             OutputFormat::Pptx => "pptx",
             OutputFormat::Xlsx => "xlsx",
@@ -130,6 +140,7 @@ impl OutputFormat {
 
     pub fn label(self) -> &'static str {
         match self {
+            OutputFormat::Pdf => "PDF",
             OutputFormat::Docx => "DOCX",
             OutputFormat::Pptx => "PPTX",
             OutputFormat::Xlsx => "XLSX",

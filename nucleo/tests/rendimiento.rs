@@ -16,6 +16,7 @@ use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::almacen::archivo::{self, MemoryKey, StoreKey};
 use nucleo::formatos::docx::DocxDocument;
+use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
 use nucleo::motor::{Engine, EngineOptions, Entity};
 use nucleo::operaciones::anonimizar::{AnonymizeOptions, anonymize};
 use nucleo::operaciones::desanonimizar::{Outcome, deanonymize};
@@ -137,6 +138,7 @@ fn a_ten_page_docx_from_end_to_end() {
                     model: model_id("modelo"),
                     now: Zoned::now(),
                     spreadsheet_amounts: false,
+                    pdf_resolution: DEFAULT_RESOLUTION,
                 },
             )
             .unwrap();
@@ -208,6 +210,7 @@ fn a_ten_page_docx_without_the_model() {
                 model: model_id("modelo"),
                 now: Zoned::now(),
                 spreadsheet_amounts: false,
+                pdf_resolution: DEFAULT_RESOLUTION,
             },
         )
         .unwrap();
@@ -250,6 +253,7 @@ fn anonymize_text(dir: &Path, store: &mut Store, n: usize) -> PathBuf {
             model: model_id("modelo"),
             now: Zoned::now(),
             spreadsheet_amounts: false,
+            pdf_resolution: DEFAULT_RESOLUTION,
         },
     )
     .unwrap()

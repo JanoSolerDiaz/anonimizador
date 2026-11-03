@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use jiff::Zoned;
+use nucleo::formatos::pdf::{DEFAULT_RESOLUTION, MAX_RESOLUTION, MIN_RESOLUTION};
 use nucleo::motor::opcionales::SkippedTypes;
 use nucleo::motor::{Engine, EngineOptions, Entity};
 use nucleo::operaciones::anonimizar::{AnonymizeOptions, anonymize};
@@ -54,6 +55,8 @@ struct AnonymizeArgs<'a> {
     options: EngineOptions,
     /// En Excel, sustituir también los importes.
     spreadsheet_amounts: bool,
+    /// Resolución de las páginas de PDF con datos.
+    resolution: u32,
 }
 
 impl<'a> AnonymizeArgs<'a> {
@@ -61,6 +64,7 @@ impl<'a> AnonymizeArgs<'a> {
         let mut files = Vec::new();
         let (mut dir, mut format, mut store) = (None, None, None);
         let mut spreadsheet_amounts = false;
+        let mut resolution = DEFAULT_RESOLUTION;
         let mut model = DEFAULT_MODEL;
         let mut options = EngineOptions::default();
         let mut args = args.iter().map(String::as_str);
@@ -73,6 +77,7 @@ impl<'a> AnonymizeArgs<'a> {
                 "--almacen" => store = Some(args.next().ok_or(ArgsError::Usage)?),
                 "--formato" => {
                     format = Some(match args.next() {
+                        Some("pdf") => OutputFormat::Pdf,
                         Some("docx") => OutputFormat::Docx,
                         Some("pptx") => OutputFormat::Pptx,
                         Some("xlsx") => OutputFormat::Xlsx,
@@ -82,6 +87,15 @@ impl<'a> AnonymizeArgs<'a> {
                     })
                 }
                 "--sustituir-importes" => spreadsheet_amounts = true,
+                "--ppp" => {
+                    let value = args.next().ok_or(ArgsError::Usage)?;
+                    resolution = value.parse().map_err(|_| ArgsError::Usage)?;
+                    if !(MIN_RESOLUTION..=MAX_RESOLUTION).contains(&resolution) {
+                        return Err(ArgsError::Invalid(nucleo::Error::InvalidResolution(
+                            resolution,
+                        )));
+                    }
+                }
                 "--no-sustituir" => {
                     let list = args.next().ok_or(ArgsError::Usage)?;
                     let kinds: Vec<&str> = list
@@ -106,6 +120,7 @@ impl<'a> AnonymizeArgs<'a> {
             model,
             options,
             spreadsheet_amounts,
+            resolution,
         })
     }
 }
@@ -133,6 +148,7 @@ pub fn anonymize_files(args: &[String]) -> ExitCode {
             model: model.clone(),
             now: Zoned::now(),
             spreadsheet_amounts: args.spreadsheet_amounts,
+            pdf_resolution: args.resolution,
         };
         match anonymize(
             path,
@@ -164,6 +180,12 @@ pub fn anonymize_files(args: &[String]) -> ExitCode {
                     println!(
                         "  El documento tiene {} objetos incrustados. Su contenido no se ha revisado.",
                         summary.warnings.objects
+                    );
+                }
+                if summary.warnings.attachments > 0 {
+                    println!(
+                        "  El PDF tenía {} archivos adjuntos. Se han quitado de la salida.",
+                        summary.warnings.attachments
                     );
                 }
             }

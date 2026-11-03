@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 
 use super::InputFormat;
 use super::marcadores::{FoundMarker, canonical, find_bare_markers, find_markers};
-use crate::Result;
 use crate::almacen::Store;
 use crate::formatos::Replacement;
 use crate::formatos::docx::DocxDocument;
@@ -22,6 +21,7 @@ use crate::formatos::salida::{Suffix, description, save_new};
 use crate::formatos::texto::TextDocument;
 use crate::formatos::xlsx::{XlsxDocument, XlsxKind};
 use crate::motor::tipos::TypeTable;
+use crate::{Error, Result};
 
 /// De dónde sale el valor de un marcador.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +99,9 @@ pub fn deanonymize(
     let bytes = std::fs::read(input)?;
     let format = InputFormat::detect(input, &bytes)?;
     let (data, report) = match format {
+        // En el PDF anonimizado el dato ya no existe: el texto se rehízo
+        // como imagen. Se desanonimiza lo que se sacó de él.
+        InputFormat::Pdf => return Err(Error::PdfNotDeanonymizable),
         InputFormat::Docx => {
             let document = DocxDocument::from_bytes(&bytes)?;
             let segments: Vec<&str> = document

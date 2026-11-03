@@ -160,8 +160,9 @@ fn anonimizar_rejects_bad_arguments_before_opening_anything() {
             "--salida",
             s(&out),
             "--formato",
-            "pdf",
+            "rtf",
         ],
+        vec!["anonimizar", s(&file), "--salida", s(&out), "--ppp", "alta"],
         vec!["anonimizar", s(&file), "--salida", s(&out), "--almacen"],
         vec!["anonimizar", s(&file), "--salida", s(&out), "--rapido"],
         vec!["anonimizar", s(&file), "--salida", s(&out), "--umbral", "2"],
@@ -169,6 +170,29 @@ fn anonimizar_rejects_bad_arguments_before_opening_anything() {
         let output = cli(&args);
         assert_eq!(output.status.code(), Some(2), "{args:?}");
         assert!(stderr(&output).contains("Uso:"), "{args:?}");
+    }
+}
+
+#[test]
+fn anonimizar_rejects_a_resolution_out_of_range() {
+    let w = Workspace::new();
+    let file = w.file("nota.txt", "Hola.\n");
+    let out = w.out();
+    for resolution in ["100", "301"] {
+        let output = cli(&[
+            "anonimizar",
+            s(&file),
+            "--salida",
+            s(&out),
+            "--ppp",
+            resolution,
+        ]);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(
+            stderr(&output).contains("La resolución debe estar entre 150 y 300 ppp"),
+            "{}",
+            stderr(&output)
+        );
     }
 }
 

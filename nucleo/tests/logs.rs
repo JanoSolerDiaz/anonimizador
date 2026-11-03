@@ -18,6 +18,7 @@ use tracing::{Event, Metadata, Subscriber};
 use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::formatos::docx::DocxDocument;
+use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
 use nucleo::motor::troceado::{
     DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS, OVERLAP_TOKENS,
     plan_windows,
@@ -327,6 +328,7 @@ fn anonymizing_and_deanonymizing_never_log_document_text_or_store_values() {
             model: model_id("modelo"),
             now: Zoned::now(),
             spreadsheet_amounts: false,
+            pdf_resolution: DEFAULT_RESOLUTION,
         };
         let out = dir.path().join("salida");
         std::fs::create_dir(&out).unwrap();

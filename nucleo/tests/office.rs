@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::error::Office;
+use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
 use nucleo::formatos::pptx::PptxDocument;
 use nucleo::formatos::xlsx::XlsxDocument;
 use nucleo::motor::{Engine, EngineOptions, Entity};
@@ -99,6 +100,7 @@ fn options(format: OutputFormat, spreadsheet_amounts: bool) -> AnonymizeOptions 
         model: model_id("modelo"),
         now: Zoned::now(),
         spreadsheet_amounts,
+        pdf_resolution: DEFAULT_RESOLUTION,
     }
 }
 

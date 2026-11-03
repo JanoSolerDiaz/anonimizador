@@ -104,6 +104,8 @@ impl Office {
 pub struct Warnings {
     pub images: usize,
     pub objects: usize,
+    /// Archivos adjuntos de un PDF, que se quitan de la salida.
+    pub attachments: usize,
 }
 
 /// Paquete abierto para leer sus partes.

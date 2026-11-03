@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::formatos::docx::DocxDocument;
+use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
 use nucleo::motor::{Engine, EngineOptions, Entity};
 use nucleo::operaciones::anonimizar::{AnonymizeOptions, anonymize};
 use nucleo::operaciones::{Detector, OutputFormat, model_id};
@@ -118,6 +119,7 @@ fn options(format: OutputFormat) -> AnonymizeOptions {
         model: MODEL.to_owned(),
         now: now(),
         spreadsheet_amounts: false,
+        pdf_resolution: DEFAULT_RESOLUTION,
     }
 }
 
@@ -412,7 +414,7 @@ fn an_unknown_format_is_rejected() {
     assert!(matches!(error, Error::UnsupportedFormat(_)), "{error:?}");
     assert_eq!(
         error.to_string(),
-        "El formato «rtf» no se admite; use DOCX, PPTX, XLSX, MD o TXT."
+        "El formato «rtf» no se admite; use PDF, DOCX, PPTX, XLSX, MD o TXT."
     );
 }
 
@@ -555,6 +557,7 @@ fn with_the_real_model_no_expected_value_is_left_in_the_corpus() {
                 model: model_id("modelo"),
                 now: Zoned::now(),
                 spreadsheet_amounts: false,
+                pdf_resolution: DEFAULT_RESOLUTION,
             },
         )
         .unwrap();

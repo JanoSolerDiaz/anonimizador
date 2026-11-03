@@ -17,6 +17,7 @@ use super::{Detector, InputFormat, OutputFormat};
 use crate::almacen::{DocumentRecord, OutputFile, SourceFile, Store};
 use crate::formatos::Replacement;
 use crate::formatos::docx::{DocxDocument, Warnings};
+use crate::formatos::pdf::{PdfDocument, WriteOptions, verify};
 use crate::formatos::pptx::PptxDocument;
 use crate::formatos::salida::{Suffix, description, save_new};
 use crate::formatos::texto::TextDocument;
@@ -37,6 +38,9 @@ pub struct AnonymizeOptions {
     /// sea `true` (decisión de Jano del 2026-11-02). En los demás formatos
     /// se sustituyen siempre que no se haya desmarcado el tipo.
     pub spreadsheet_amounts: bool,
+    /// Resolución de las páginas de PDF que se convierten en imagen, en ppp
+    /// (150 a 300; ver [`crate::formatos::pdf::DEFAULT_RESOLUTION`]).
+    pub pdf_resolution: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +54,7 @@ pub struct Summary {
 
 /// Documento de entrada ya leído.
 enum Source {
+    Pdf(PdfDocument),
     Docx(DocxDocument),
     Pptx(PptxDocument),
     Xlsx(XlsxDocument),
@@ -75,6 +80,7 @@ pub fn anonymize(
         });
     }
     let source = match format {
+        InputFormat::Pdf => Source::Pdf(PdfDocument::from_bytes(&bytes)?),
         InputFormat::Docx => Source::Docx(DocxDocument::from_bytes(&bytes)?),
         InputFormat::Pptx => Source::Pptx(PptxDocument::from_bytes(&bytes)?),
         InputFormat::Xlsx => Source::Xlsx(XlsxDocument::from_bytes(&bytes)?),
@@ -83,6 +89,7 @@ pub fn anonymize(
         }
     };
     let segments: Vec<&str> = match &source {
+        Source::Pdf(document) => document.segments(),
         Source::Docx(document) => document
             .segments()
             .iter()
@@ -155,16 +162,55 @@ pub fn anonymize(
         });
     }
 
-    let written =
-        output_bytes(&source, options.format, &replacements, &literals).and_then(|data| {
-            save_new(
-                dir,
-                &description(input),
-                Suffix::Anonymized,
-                options.format.extension(),
-                |out: &mut dyn Write| Ok(out.write_all(&data)?),
+    // En un PDF, cada otra aparición de un valor detectado se tapa también,
+    // en cualquier página: la verificación final la buscaría.
+    if let Source::Pdf(document) = &source {
+        replacements = document.with_literals(&replacements, &literals);
+    }
+    let mut rasterized_pages = 0;
+    let data = match (&source, options.format) {
+        (Source::Pdf(document), OutputFormat::Pdf) => document
+            .write(
+                &replacements,
+                &WriteOptions {
+                    resolution: options.pdf_resolution,
+                },
+                &mut |marker: &str| store.short_form(marker),
             )
-        });
+            .map(|written| {
+                rasterized_pages = written.rasterized_pages;
+                written.bytes
+            }),
+        _ => output_bytes(&source, options.format, &replacements, &literals),
+    };
+    let written = data.and_then(|data| {
+        save_new(
+            dir,
+            &description(input),
+            Suffix::Anonymized,
+            options.format.extension(),
+            |out: &mut dyn Write| Ok(out.write_all(&data)?),
+        )
+    });
+    // Verificación obligatoria del PDF, sobre el archivo ya escrito. Si
+    // falla, la salida se borra.
+    let written = written.and_then(|path| {
+        if options.format != OutputFormat::Pdf {
+            return Ok(path);
+        }
+        let values: Vec<&str> = literals.iter().map(|(value, _)| value.as_str()).collect();
+        match std::fs::read(&path)
+            .map_err(Error::from)
+            .and_then(|bytes| verify(&bytes, &values))
+        {
+            Ok(()) => Ok(path),
+            Err(error) => {
+                let _ = std::fs::remove_file(&path);
+                tracing::warn!(documento = %id, "la verificación del PDF ha fallado");
+                Err(error)
+            }
+        }
+    });
     let output = match written {
         Ok(path) => path,
         Err(error) => {
@@ -190,6 +236,10 @@ pub fn anonymize(
         markers,
     });
     let warnings = match &source {
+        Source::Pdf(document) => Warnings {
+            attachments: document.attachments(),
+            ..Warnings::default()
+        },
         Source::Docx(document) => document.warnings(),
         Source::Pptx(document) => document.warnings(),
         Source::Xlsx(document) => document.warnings(),
@@ -199,6 +249,7 @@ pub fn anonymize(
         documento = %id,
         formato = options.format.extension(),
         entidades = entities.len(),
+        paginas_rasterizadas = rasterized_pages,
         "documento anonimizado"
     );
     Ok(Summary {
@@ -217,6 +268,11 @@ fn output_bytes(
 ) -> Result<Vec<u8>> {
     let text = |result: Result<String>| result.map(String::into_bytes);
     match (source, format) {
+        // El PDF en PDF lo escribe `anonymize`, que tiene el almacén para
+        // las formas cortas.
+        (Source::Pdf(document), OutputFormat::Markdown) => text(document.markdown(replacements)),
+        (Source::Pdf(document), OutputFormat::Text) => text(document.plain_text(replacements)),
+        (Source::Pdf(document), _) => document.docx(replacements),
         (Source::Docx(document), OutputFormat::Markdown) => text(document.markdown(replacements)),
         (Source::Docx(document), OutputFormat::Text) => text(document.plain_text(replacements)),
         (Source::Docx(document), _) => document.write(replacements, literals),

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::formatos::docx::DocxDocument;
+use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
 use nucleo::motor::Entity;
 use nucleo::operaciones::anonimizar::{AnonymizeOptions, anonymize};
 use nucleo::operaciones::desanonimizar::{
@@ -339,6 +340,7 @@ fn anonymize_options(format: OutputFormat) -> AnonymizeOptions {
         model: "modelo".into(),
         now: Zoned::now(),
         spreadsheet_amounts: false,
+        pdf_resolution: DEFAULT_RESOLUTION,
     }
 }
 
