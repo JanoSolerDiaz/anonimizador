@@ -85,3 +85,14 @@ Decisiones de diseño (se anotan en `DECISIONES.md`):
 | Las cajas no coinciden con lo que se ve (fuentes raras, texto invisible) | Media | 1 pt de margen; la verificación lee el texto, no la imagen; se anota como límite conocido |
 | Páginas grandes a 300 ppp gastan mucha memoria | Baja | Se procesa página a página y se suelta cada imagen |
 | Rendimiento por debajo de los objetivos | Media | Se mide con `rendimiento.rs` y se anota |
+
+## Estado (2026-11-04)
+
+Hecho: las seis tareas. Desviaciones respecto al plan, anotadas en `DECISIONES.md` («Hito 4 · PDF»):
+
+- PDFium se usa con un permiso exclusivo entre hilos (`pdf::pdfium()`): en paralelo, dos documentos llegaron a dar vacío el texto de una página.
+- La búsqueda de valores ignora también las ligaduras, y los valores de seis o más caracteres cuentan aunque vayan pegados a otra palabra («DNI12345678Z»).
+- Las páginas giradas salen sin giro, con el tamaño con que se ven.
+- La prueba de cobertura renderiza la salida sin los marcadores y exige que no quede nada del texto original, y que el marcador quede dentro de la zona del texto. La añadí después de ver en una imagen que los marcadores salían una línea más arriba; las pruebas de texto no lo detectaban.
+
+Pendiente fuera de este hito: enlaces con datos en páginas copiadas; la prueba de logs con un PDF.

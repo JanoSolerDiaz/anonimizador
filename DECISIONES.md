@@ -207,3 +207,57 @@ Excel guarda copias de los valores en las cachés de los gráficos y de las tabl
 - Las lecturas fonéticas de Excel (textos en japonés con su pronunciación) no se analizan.
 - Los libros de Excel incrustados en un gráfico o en un objeto cuentan como objeto incrustado en los avisos, pero su contenido no se revisa.
 - El corpus sintético no lleva gráficos ni comentarios de Excel, porque un archivo hecho a mano con ellos es fácil que Excel lo quiera reparar. Las pruebas unitarias sí los cubren.
+
+## Hito 4 · PDF · 2026-11-03
+
+El PDF sigue el PRD («Formato PDF»): las páginas con datos se rehacen como imagen con los datos tapados y los marcadores encima en texto, las demás se copian, y después una verificación obligatoria vuelve a leer el archivo. Lo que sigue son las decisiones tomadas al hacerlo.
+
+### La salida es un documento nuevo, no el original editado
+
+El PRD pide vaciar el diccionario `Info` y el XMP, quitar el outline y los adjuntos. En lugar de buscarlos uno a uno en el original, la salida se construye siempre desde un PDF vacío: las páginas sin datos se copian del original (ya aplanadas) y las demás se crean nuevas. Así tampoco pasan el JavaScript del documento, los formularios ni otras piezas que el PRD no nombra. El `Info` de la salida solo lleva el `Producer` que pone PDFium, sin datos del original.
+
+### Una página escaneada es la que no tiene texto pero sí imagen
+
+El PRD rechaza el documento si «alguna página no tiene texto». Una página en blanco tampoco lo tiene, y no es un escaneo. Se rechaza solo si una página no tiene ningún carácter visible pero sí al menos una imagen.
+
+### Un valor detectado se tapa en todas las páginas
+
+Como en Office, cada valor que el modelo detecta se busca también en el resto del documento y se tapa donde aparezca. Sin esto, un nombre que el modelo viera en la página 1 y no en la 3 haría fallar la verificación de todo el archivo. Los recuentos del resumen siguen siendo lo que detectó el modelo.
+
+### La verificación busca sin mayúsculas, acentos ni saltos de línea
+
+La verificación del PRD busca cada valor original en el texto de la salida. Se compara sin distinguir mayúsculas, acentos ni ligaduras, y cualquier serie de espacios o saltos vale lo mismo, así que «MARTA\nGONZALEZ» cuenta como «Marta González». Un valor de menos de seis caracteres solo cuenta como palabra entera, para que «Ana» no haga fallar un documento con «Mariana». La sustitución literal del punto anterior usa la misma regla, así que lo que tapa es justo lo que la verificación buscaría. La verificación se hace sobre el archivo ya escrito; si falla, se borra y el documento se olvida en el almacén.
+
+### Forma corta con un contador propio por inicial
+
+El PRD pone como forma corta la inicial del tipo y el número del marcador (`[P42]`). Con la tabla de tipos de este modelo, eso daría la misma forma corta a datos distintos: N es la inicial de `NOMBRE_PERSONA` y de `NOMBRE_PROPIO`, C la de ocho tipos. La forma corta es la inicial del tipo con un contador propio de esa inicial, que el almacén guarda en `contadores_cortos`: el primer marcador que no cabe con N es `[N1]`, el siguiente `[N2]`, sea del tipo que sea. Se asigna la primera vez que hace falta, se guarda en la entrada y, como los números de los marcadores, no se reutiliza aunque se borre la entrada. El campo es opcional: el formato del almacén sigue en la versión 1, y un almacén que traiga formas cortas sin su contador (como el ejemplo del PRD) lo pone a su altura al abrirse.
+
+### Un marcador por dato, en su tramo más ancho
+
+Un dato que ocupa dos líneas da dos rectángulos, uno por línea. El marcador se escribe en el más ancho; el otro queda en blanco.
+
+### Las páginas giradas salen sin giro, como se ven
+
+Una página con `/Rotate` se renderiza tal como se ve, y la página nueva tiene ese tamaño y ningún giro. El marcador queda horizontal y se lee igual que el resto de la página.
+
+### Desanonimizar un PDF no se admite
+
+En el PDF anonimizado el dato ya no está: su página es una imagen. El PRD no admite PDF como entrada al desanonimizar. Si se intenta, el error explica que se desanonimice el DOCX, MD o TXT sacado del PDF, o el texto copiado de él, que sí llevan los marcadores (también las formas cortas).
+
+### Párrafos de las salidas DOCX, MD y TXT
+
+PDFium no da párrafos, solo líneas. Una línea sigue en el mismo párrafo si empieza justo debajo de la anterior, con un hueco menor que la mitad de su alto. Un hueco mayor, o una línea que empieza más arriba (otra columna), abre párrafo nuevo. El MD lleva una sección `## Página N` por página; el DOCX, un salto de página entre páginas.
+
+### Un solo hilo usa PDFium a la vez
+
+PDFium no admite varios hilos. La función `thread_safe` de `pdfium-render` protege cada llamada por separado, pero no una serie de ellas, y en las pruebas dos documentos abiertos a la vez en hilos distintos llegaron a dar vacío el texto de una página. Todo el uso de PDFium pasa por un permiso exclusivo (`pdf::pdfium()`). Con dos archivos en paralelo, como pide el PRD, el modelo sí trabaja a la vez; solo se turnan la lectura y la escritura del PDF.
+
+### Rendimiento
+
+Un PDF de diez páginas con datos en todas tarda 9,5 s con 4 hilos a 200 ppp, verificación incluida, por debajo de los 15 s del PRD. De ellos, 7,8 s son del modelo. Está en `tests/informe-deteccion.md`.
+
+### Qué no se procesa todavía
+
+- Los enlaces de una página sin datos se copian con la página. Si el destino de un enlace llevara un dato que no aparece en el texto visible, no se tapa y la verificación no lo ve, porque solo lee el texto.
+- El texto invisible de un PDF escaneado con OCR cuenta como texto: el documento no se rechaza, y los rectángulos se pintan donde PDFium sitúa ese texto.
+- Un formulario sin apariencia guardada para un campo puede no dejar su texto al aplanarse.

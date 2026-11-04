@@ -417,6 +417,17 @@ la cifra de la mañana. Sigue en pie lo de la tabla anterior: con `ambos`, diez
 páginas **no bajan de 5 s** en este portátil, y queda medirlo en el equipo de
 referencia en el hito 6.
 
+### Un PDF de diez páginas con datos en todas (2026-11-04)
+
+La misma prueba maqueta el texto de diez páginas en un PDF (unas 45 líneas por página, Helvetica de 9 pt) y lo anonimiza a PDF con el modelo ya cargado, 4 hilos y 200 ppp: leer y aplanar, detectar, rasterizar y tapar las diez páginas, escribir y verificar el archivo escrito.
+
+| Medida | 4 hilos |
+|---|---|
+| Solo el modelo, sobre el texto de las diez páginas | 7,75 s |
+| Anonimizar el PDF entero y verificarlo, justo después | 9,47 s |
+
+Mediana de tres. **Cumple el objetivo del PRD de 15 s.** Lo que añade el PDF (leer, rasterizar, escribir y verificar) son unos 1,7 s; no se ha medido por partes.
+
 ### Memoria durante un lote
 
 Pico de memoria del proceso `cli anonimizar` con un lote de cinco archivos (el

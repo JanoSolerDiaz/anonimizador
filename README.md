@@ -60,8 +60,8 @@ El motor emite registros con `tracing` (recuentos por tipo, tokens, ventanas y t
 ## Anonimizar y desanonimizar desde la terminal
 
 ```bash
-# DOCX, PPTX, XLSX, MD o TXT. Sin --formato, cada archivo sale en su formato
-cargo run --release -p nucleo --bin cli -- anonimizar contrato.docx ventas.pptx nominas.xlsx notas.md --salida <carpeta>
+# PDF, DOCX, PPTX, XLSX, MD o TXT. Sin --formato, cada archivo sale en su formato
+cargo run --release -p nucleo --bin cli -- anonimizar contrato.pdf informe.docx ventas.pptx nominas.xlsx notas.md --salida <carpeta>
 
 # Archivos anonimizados o texto pegado
 cargo run --release -p nucleo --bin cli -- desanonimizar <carpeta>/contrato_anonimizado.docx --salida <otra carpeta>
@@ -71,7 +71,9 @@ cargo run --release -p nucleo --bin cli -- desanonimizar --texto "Firmado por [N
 cargo run --release -p nucleo --bin cli -- almacen listar | exportar <documento> --salida <carpeta> | importar <archivo> | olvidar <documento> | vaciar --confirmar | purgar
 ```
 
-`anonimizar` admite `--formato docx|pptx|xlsx|md|txt`, `--no-sustituir` y las opciones del motor. Word, PowerPoint y Excel salen en su propio formato, en MD o en TXT; los archivos de Office 97-2003 (`.doc`, `.ppt`, `.xls`) se rechazan con un aviso para guardarlos en el formato nuevo. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
+`anonimizar` admite `--formato pdf|docx|pptx|xlsx|md|txt`, `--ppp <150-300>`, `--no-sustituir` y las opciones del motor. Word, PowerPoint y Excel salen en su propio formato, en MD o en TXT; los archivos de Office 97-2003 (`.doc`, `.ppt`, `.xls`) se rechazan con un aviso para guardarlos en el formato nuevo. Si un marcador tiene valores distintos en el almacén y en un diccionario importado, `desanonimizar` pide elegir con `--fuente propio` o `--fuente <nombre del diccionario>`. Un archivo que falla no detiene el lote: se explica el error y se siguen procesando los demás.
+
+Un PDF digital sale en PDF, DOCX, MD o TXT. En el PDF, las páginas sin datos se copian tal cual; las que tienen datos se convierten en imagen (200 ppp por defecto, `--ppp` para cambiarlo), los datos se tapan con un rectángulo blanco y el marcador se escribe encima como texto. Si el marcador no cabe, va una forma corta como `[N1]`, que también se restaura. La salida no lleva los metadatos, el índice de navegación ni los adjuntos del original (se avisa de estos). Después se vuelve a leer el PDF entero: si aparece algún dato original, la salida se borra y el archivo cuenta como fallido. Los PDF con contraseña o con páginas escaneadas se rechazan. Un PDF anonimizado no se desanonimiza: se desanonimiza el DOCX, MD o TXT sacado de él, o el texto copiado.
 
 En Excel se analizan los textos, los resultados de las fórmulas, los nombres de las hojas y también las celdas numéricas (un teléfono guardado como número, una fecha), cada una con el título de su columna como contexto para el modelo. Un número sustituido pasa a ser texto con el marcador. Los importes no se sustituyen por defecto; `--sustituir-importes` los sustituye también. Una hoja con un dato en el nombre se renombra con el marcador sin corchetes y se recupera al desanonimizar. Detalles en `DECISIONES.md`.
 
@@ -95,12 +97,13 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace -- --include-ignored   # las ignoradas necesitan recursos/
 
-# Tiempos de un DOCX de diez páginas y de un almacén con 1.000 documentos
+# Tiempos de un DOCX y un PDF de diez páginas y de un almacén con 1.000 documentos
 cargo test --release -p nucleo --test rendimiento -- --include-ignored --nocapture --test-threads=1
 
-# Volver a generar el corpus sintético de Word y de PowerPoint y Excel
+# Volver a generar el corpus sintético de Word, de PowerPoint y Excel y de PDF (este necesita PDFium)
 cargo run -p nucleo --example generar_corpus_docx
 cargo run -p nucleo --example generar_corpus_office
+cargo run -p nucleo --example generar_corpus_pdf
 
 # Scripts de descarga y garantía "sin red" por plataforma
 node --test "scripts/test/*.test.mjs"

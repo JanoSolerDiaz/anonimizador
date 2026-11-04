@@ -311,7 +311,7 @@ Por cada página con al menos una entidad:
 5. Escribir encima cada marcador como texto vectorial, centrado en su rectángulo.
 6. Sustituir la página original por la nueva.
 
-Tamaño del marcador: el mayor que quepa en el rectángulo, hasta el 70 % de su alto. Si a 5 pt no cabe, usar una forma corta: inicial del tipo y número, por ejemplo `[P42]`. La forma corta se guarda en el almacén junto al marcador completo.
+Tamaño del marcador: el mayor que quepa en el rectángulo, hasta el 70 % de su alto. Si a 5 pt no cabe, usar una forma corta: la inicial del tipo y un número propio de esa inicial, por ejemplo `[P42]`. Las iniciales se repiten entre tipos, así que el número no es el del marcador: el almacén lleva un contador por inicial (`contadores_cortos`). La forma corta se guarda en el almacén junto al marcador completo y no se reutiliza nunca.
 
 ### Limpieza del documento
 
@@ -346,6 +346,7 @@ Toda la correspondencia entre marcadores y datos originales vive en un único ar
   "formato": "anonimizador-almacen",
   "version_formato": 1,
   "contadores": { "PERSONA": 42, "EMAIL": 7 },
+  "contadores_cortos": { "P": 42 },
   "entradas": [
     {
       "marcador": "[PERSONA_0042]",
@@ -374,7 +375,7 @@ Toda la correspondencia entre marcadores y datos originales vive en un único ar
 }
 ```
 
-`forma_corta` solo existe si se usó en un PDF. `valor` es la forma de la primera aparición.
+`forma_corta` solo existe si se usó en un PDF, y `contadores_cortos` solo si se usó alguna. `valor` es la forma de la primera aparición.
 
 ### Caducidad
 

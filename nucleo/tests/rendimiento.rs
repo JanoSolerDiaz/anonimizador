@@ -299,3 +299,108 @@ fn a_store_with_a_thousand_documents() {
         seconds(median(one_more)),
     );
 }
+
+/// PDF con el texto de las diez páginas, unas 45 líneas por página.
+fn ten_page_pdf() -> Vec<u8> {
+    use pdfium_render::prelude::*;
+
+    let mut lines: Vec<String> = Vec::new();
+    for paragraph in ten_pages().split("\n\n") {
+        let mut line = String::new();
+        for word in paragraph.split_whitespace() {
+            if line.chars().count() + word.chars().count() > 95 {
+                lines.push(std::mem::take(&mut line));
+            }
+            if !line.is_empty() {
+                line.push(' ');
+            }
+            line.push_str(word);
+        }
+        lines.push(line);
+        lines.push(String::new());
+    }
+    let per_page = lines.len().div_ceil(10);
+    let pdfium = nucleo::formatos::pdf::pdfium().unwrap();
+    let mut document = pdfium.create_new_pdf().unwrap();
+    let font = document.fonts_mut().helvetica();
+    for chunk in lines.chunks(per_page) {
+        let mut page = document
+            .pages_mut()
+            .create_page_at_end(PdfPagePaperSize::a4())
+            .unwrap();
+        for (i, line) in chunk.iter().enumerate().filter(|(_, l)| !l.is_empty()) {
+            page.objects_mut()
+                .create_text_object(
+                    PdfPoints::new(50.0),
+                    PdfPoints::new(800.0 - 760.0 / per_page as f32 * i as f32),
+                    line,
+                    font,
+                    PdfPoints::new(9.0),
+                )
+                .unwrap();
+        }
+    }
+    document.save_to_bytes().unwrap()
+}
+
+/// Objetivo del PRD: un PDF de diez páginas con datos en todas, en menos de
+/// 15 s. Incluye la verificación obligatoria.
+#[test]
+#[ignore = "necesita PDFium y los modelos descargados en recursos/"]
+fn a_ten_page_pdf_with_data_on_every_page() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("diez-paginas.pdf");
+    std::fs::write(&input, ten_page_pdf()).unwrap();
+    let resources = Resources::locate().expect("no se encuentra la carpeta recursos/");
+    let engine = Engine::load(
+        &resources,
+        &resources.model("modelo"),
+        EngineOptions {
+            threads: 4,
+            ..EngineOptions::default()
+        },
+    )
+    .unwrap();
+    let segments: Vec<String> =
+        nucleo::formatos::pdf::PdfDocument::from_bytes(&std::fs::read(&input).unwrap())
+            .unwrap()
+            .segments()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+    let refs: Vec<&str> = segments.iter().map(String::as_str).collect();
+    let (mut detecting, mut times) = (Vec::new(), Vec::new());
+    let mut rasterized = 0;
+    for _ in 0..RUNS {
+        let start = Instant::now();
+        engine.detect(&refs).unwrap();
+        detecting.push(start.elapsed());
+        let out = tempfile::tempdir().unwrap();
+        let start = Instant::now();
+        let summary = anonymize(
+            &input,
+            out.path(),
+            &engine,
+            &mut Store::new(),
+            &AnonymizeOptions {
+                format: OutputFormat::Pdf,
+                model: model_id("modelo"),
+                now: Zoned::now(),
+                spreadsheet_amounts: false,
+                pdf_resolution: DEFAULT_RESOLUTION,
+            },
+        )
+        .unwrap();
+        times.push(start.elapsed());
+        let bytes = std::fs::read(&summary.output).unwrap();
+        rasterized = nucleo::formatos::pdf::PdfDocument::from_bytes(&bytes)
+            .unwrap()
+            .segments()
+            .len();
+    }
+    println!(
+        "PDF de diez páginas ({rasterized} en la salida), 4 hilos, a {DEFAULT_RESOLUTION} ppp: solo el modelo {}, anonimizar y verificar {} (mediana de {RUNS})",
+        seconds(median(detecting)),
+        seconds(median(times)),
+    );
+}
