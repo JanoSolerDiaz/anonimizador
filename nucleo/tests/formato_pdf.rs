@@ -198,23 +198,31 @@ fn assert_everything_covered(rotation: PdfPageRenderRotation) {
         .write(&[all], &WriteOptions::default(), &mut no_short_form)
         .unwrap();
 
-    // El permiso de PDFium se suelta antes de renderizar.
-    let (width_pt, height_pt, marker) = {
+    // La página de salida sin el marcador: solo la imagen pintada. El
+    // permiso de PDFium se suelta antes de renderizar.
+    let (width_pt, height_pt, marker, image_only) = {
         let pdfium = pdf::pdfium().unwrap();
         let written = pdfium
             .load_pdf_from_byte_slice(&output.bytes, None)
             .unwrap();
-        let page = written.pages().get(0).unwrap();
+        let mut page = written.pages().get(0).unwrap();
         assert_eq!(page.rotation().unwrap(), PdfPageRenderRotation::None);
-        let marker = page
+        let index = page
             .objects()
             .iter()
-            .find(|o| o.object_type() == PdfPageObjectType::Text)
+            .position(|o| o.object_type() == PdfPageObjectType::Text)
+            .unwrap();
+        let marker = page
+            .objects()
+            .get(index)
             .unwrap()
             .bounds()
             .unwrap()
             .to_rect();
-        (page.width().value, page.height().value, marker)
+        page.objects_mut().remove_object_at_index(index).unwrap();
+        let size = (page.width().value, page.height().value);
+        drop(page);
+        (size.0, size.1, marker, written.save_to_bytes().unwrap())
     };
     // Un A4 girado se ve apaisado, y la página nueva tiene ese tamaño.
     let turned = matches!(
@@ -229,18 +237,10 @@ fn assert_everything_covered(rotation: PdfPageRenderRotation) {
     let scale = 2.0;
     let (width, height) = ((width_pt * scale) as i32, (height_pt * scale) as i32);
     let before = render(&original, 0, width, height);
-    let after = render(&output.bytes, 0, width, height);
+    let after = render(&image_only, 0, width, height);
     let mut dark = 0;
     for (x, y, pixel) in before.enumerate_pixels() {
         if pixel.0[0] > 128 {
-            continue;
-        }
-        let (px, py) = (x as f32 / scale, height_pt - y as f32 / scale);
-        let in_marker = px >= marker.left().value - 2.0
-            && px <= marker.right().value + 2.0
-            && py >= marker.bottom().value - 2.0
-            && py <= marker.top().value + 2.0;
-        if in_marker {
             continue;
         }
         dark += 1;
@@ -250,6 +250,28 @@ fn assert_everything_covered(rotation: PdfPageRenderRotation) {
         );
     }
     assert!(dark > 50, "la prueba debe mirar algún píxel del texto");
+
+    // El marcador cae dentro de la zona del texto original, no encima ni al
+    // lado. La holgura cubre el margen de 1 pt y lo que las cajas de PDFium
+    // pasan de la tinta de las letras.
+    let (mut left, mut right, mut top, mut bottom) = (f32::MAX, f32::MIN, f32::MIN, f32::MAX);
+    for (x, y, pixel) in before.enumerate_pixels() {
+        if pixel.0[0] <= 128 {
+            let (px, py) = (x as f32 / scale, height_pt - y as f32 / scale);
+            left = left.min(px);
+            right = right.max(px);
+            top = top.max(py);
+            bottom = bottom.min(py);
+        }
+    }
+    let slack = 6.0;
+    assert!(
+        marker.left().value >= left - slack
+            && marker.right().value <= right + slack
+            && marker.bottom().value >= bottom - slack
+            && marker.top().value <= top + slack,
+        "el marcador {marker:?} se sale del texto [{left}, {bottom}, {right}, {top}] con giro {rotation:?}"
+    );
 }
 
 #[test]

@@ -160,8 +160,9 @@ pub(super) fn write(
                 },
             };
             let text_width = helvetica_width(&text) * size;
-            // De arriba abajo a coordenadas de PDF, centrado.
-            let bottom = geometry.height - rect.bottom;
+            // De arriba abajo a coordenadas de PDF, centrado. En la página
+            // vista, `rect.top` es la distancia del borde de abajo.
+            let bottom = geometry.height - rect.top;
             let x = rect.left + (rect.width() - text_width) / 2.0;
             let y = bottom + (rect.height() - size * CAP_HEIGHT) / 2.0;
             page.objects_mut()
@@ -289,7 +290,7 @@ fn fit(text: &str, rect: &Rect) -> Option<f32> {
 fn largest_size(text: &str, rect: &Rect) -> f32 {
     let by_height = rect.height() * MAX_HEIGHT_SHARE;
     let by_width = rect.width() / helvetica_width(text).max(f32::EPSILON);
-    by_height.min(by_width).max(1.0)
+    by_height.min(by_width)
 }
 
 /// Ancho de `text` en Helvetica a cuerpo 1 (métricas AFM de la fuente

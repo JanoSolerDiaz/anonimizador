@@ -1,0 +1,40 @@
+{
+  "adjuntos": 1,
+  "entidades": [
+    {
+      "texto": "Marta Lozano Ibáñez",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "48291736Q",
+      "tipo": "ID_DOCUMENTO_PERSONA"
+    },
+    {
+      "texto": "Calle del Coso 87, 50001 Zaragoza",
+      "tipo": "DIRECCION_POSTAL"
+    },
+    {
+      "texto": "Iván Prieto Salas",
+      "tipo": "NOMBRE_PERSONA"
+    },
+    {
+      "texto": "B12345674",
+      "tipo": "CIF"
+    },
+    {
+      "texto": "654 218 903",
+      "tipo": "TELEFONO"
+    },
+    {
+      "texto": "marta.lozano@correo-ejemplo.es",
+      "tipo": "EMAIL"
+    },
+    {
+      "texto": "Lucía Ferrer Gil",
+      "tipo": "NOMBRE_PERSONA"
+    }
+  ],
+  "paginas_sin_datos": [
+    2
+  ]
+}
