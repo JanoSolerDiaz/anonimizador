@@ -408,3 +408,24 @@ fn combined_context_covers_what_either_reading_finds() {
     assert!(covered(health.0, health.1, health.2, ContextMode::Combined));
     assert!(covered(name.0, name.1, name.2, ContextMode::Combined));
 }
+
+#[test]
+#[ignore = "necesita los modelos descargados en recursos/"]
+fn progress_goes_up_to_one_and_gives_the_same_entities() {
+    let engine = engine("modelo");
+    let segments: Vec<String> = (0..40)
+        .map(|n| format!("El cliente número {n} es Marta Lozano Ibáñez, con DNI 48291736Q."))
+        .collect();
+    let seen = std::sync::Mutex::new(Vec::new());
+    let with_progress = engine
+        .detect_with_progress(&segments, &|done| seen.lock().unwrap().push(done))
+        .unwrap();
+    assert_eq!(with_progress, engine.detect(&segments).unwrap());
+    let seen = seen.into_inner().unwrap();
+    assert!(seen.len() > 2, "{seen:?}");
+    assert!(seen.windows(2).all(|w| w[0] <= w[1]), "{seen:?}");
+    assert_eq!(seen.first(), Some(&0.0));
+    assert_eq!(seen.last(), Some(&1.0));
+    // Con la lectura `ambos`, la primera acaba en la mitad.
+    assert!(seen.contains(&0.5), "{seen:?}");
+}

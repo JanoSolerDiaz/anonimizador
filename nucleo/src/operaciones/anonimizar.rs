@@ -22,6 +22,7 @@ use crate::formatos::pptx::PptxDocument;
 use crate::formatos::salida::{Suffix, description, save_new};
 use crate::formatos::texto::TextDocument;
 use crate::formatos::xlsx::XlsxDocument;
+use crate::motor::Entity;
 use crate::{Error, Result, VERSION};
 
 /// Tipo de los importes, que en Excel no se sustituyen por defecto.
@@ -71,6 +72,38 @@ pub fn anonymize(
     store: &mut Store,
     options: &AnonymizeOptions,
 ) -> Result<Summary> {
+    let prepared = prepare(input, detector, options, &|_| {})?;
+    finish(prepared, dir, store, options, &|_| {})
+}
+
+/// Fase de una anonimización, para mostrar el progreso.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Stage {
+    Reading,
+    /// Parte del análisis hecha, de 0 a 1.
+    Analyzing(f32),
+    Writing,
+    /// La verificación obligatoria de un PDF.
+    Verifying,
+}
+
+/// Documento leído y analizado, listo para [`finish`]. Prepararlo no usa el
+/// almacén: dos documentos se pueden preparar a la vez.
+pub struct Prepared {
+    input: PathBuf,
+    sha256: String,
+    source: Source,
+    entities: Vec<Entity>,
+}
+
+/// Primera fase: lee `input` y detecta sus datos personales.
+pub fn prepare(
+    input: &Path,
+    detector: &dyn Detector,
+    options: &AnonymizeOptions,
+    progress: &dyn Fn(Stage),
+) -> Result<Prepared> {
+    progress(Stage::Reading);
     let bytes = std::fs::read(input)?;
     let format = InputFormat::detect(input, &bytes)?;
     if !format.can_become(options.format) {
@@ -107,13 +140,14 @@ pub fn anonymize(
             .collect(),
         Source::Text(document) => document.segments(),
     };
+    let analyzing = |done: f32| progress(Stage::Analyzing(done));
     let mut entities = match &source {
         // Los números de Excel se analizan con el título de su columna
         // delante; las entidades vuelven a las posiciones del segmento.
         Source::Xlsx(document) => {
             let with_context = document.detection_texts();
             let texts: Vec<&str> = with_context.iter().map(|(t, _)| t.as_str()).collect();
-            let mut entities = detector.detect(&texts)?;
+            let mut entities = detector.detect_with_progress(&texts, &analyzing)?;
             entities.retain_mut(|e| {
                 let prefix = with_context[e.segment].1;
                 if e.end <= prefix {
@@ -130,14 +164,39 @@ pub fn anonymize(
             });
             entities
         }
-        _ => detector.detect(&segments)?,
+        _ => detector.detect_with_progress(&segments, &analyzing)?,
     };
     if matches!(source, Source::Xlsx(_)) && !options.spreadsheet_amounts {
         entities.retain(|e| e.kind != AMOUNT_KIND);
     }
     // Los marcadores se numeran en orden de aparición.
     entities.sort_by_key(|e| (e.segment, e.start));
+    Ok(Prepared {
+        input: input.to_path_buf(),
+        sha256: sha256_hex(&bytes),
+        source,
+        entities,
+    })
+}
 
+/// Segunda fase: asigna los marcadores en el almacén, escribe la salida en
+/// `dir` (y la verifica si es un PDF) y registra el documento. Si algo falla,
+/// el documento se olvida.
+pub fn finish(
+    prepared: Prepared,
+    dir: &Path,
+    store: &mut Store,
+    options: &AnonymizeOptions,
+    progress: &dyn Fn(Stage),
+) -> Result<Summary> {
+    let Prepared {
+        input,
+        sha256,
+        source,
+        entities,
+    } = prepared;
+    let input = input.as_path();
+    progress(Stage::Writing);
     let id = uuid::Uuid::new_v4().to_string();
     let mut replacements = Vec::with_capacity(entities.len());
     let mut markers: Vec<String> = Vec::new();
@@ -199,6 +258,7 @@ pub fn anonymize(
         if options.format != OutputFormat::Pdf {
             return Ok(path);
         }
+        progress(Stage::Verifying);
         let values: Vec<&str> = literals.iter().map(|(value, _)| value.as_str()).collect();
         match std::fs::read(&path)
             .map_err(Error::from)
@@ -228,7 +288,7 @@ pub fn anonymize(
         model: options.model.clone(),
         origin: SourceFile {
             name: file_name(input),
-            sha256: sha256_hex(&bytes),
+            sha256,
         },
         output: OutputFile {
             name: file_name(&output),

@@ -24,11 +24,31 @@ const ZIP_SIGNATURE: &[u8] = b"PK\x03\x04";
 /// motor; las pruebas usan uno falso para no cargar el modelo.
 pub trait Detector {
     fn detect(&self, segments: &[&str]) -> Result<Vec<Entity>>;
+
+    /// Como `detect`, llamando a `progress` con la parte hecha (de 0 a 1).
+    /// Sin más, solo avisa al terminar.
+    fn detect_with_progress(
+        &self,
+        segments: &[&str],
+        progress: &dyn Fn(f32),
+    ) -> Result<Vec<Entity>> {
+        let entities = self.detect(segments)?;
+        progress(1.0);
+        Ok(entities)
+    }
 }
 
 impl Detector for Engine {
     fn detect(&self, segments: &[&str]) -> Result<Vec<Entity>> {
         Engine::detect(self, segments)
+    }
+
+    fn detect_with_progress(
+        &self,
+        segments: &[&str],
+        progress: &dyn Fn(f32),
+    ) -> Result<Vec<Entity>> {
+        Engine::detect_with_progress(self, segments, progress)
     }
 }
 
@@ -111,6 +131,58 @@ impl InputFormat {
         matches!(output, OutputFormat::Markdown | OutputFormat::Text)
             || self.same_output() == output
             || (self == InputFormat::Pdf && output == OutputFormat::Docx)
+    }
+}
+
+/// Lo que es un archivo antes de procesarlo, para la lista de la interfaz.
+#[derive(Debug)]
+pub enum Inspection {
+    /// Se puede anonimizar.
+    Supported(InputFormat),
+    /// Un PDF con páginas escaneadas: no se puede anonimizar en la v1.
+    ScannedPdf,
+    /// No se admite, con el motivo para el usuario.
+    Rejected(Error),
+}
+
+/// Mira qué es `path` sin procesarlo. Un PDF se abre entero para saber si
+/// tiene páginas escaneadas o contraseña.
+pub fn inspect(path: &Path) -> Inspection {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(error) => return Inspection::Rejected(error.into()),
+    };
+    match InputFormat::detect(path, &bytes) {
+        Ok(InputFormat::Pdf) => match crate::formatos::pdf::PdfDocument::from_bytes(&bytes) {
+            Ok(_) => Inspection::Supported(InputFormat::Pdf),
+            Err(Error::ScannedPdf) => Inspection::ScannedPdf,
+            Err(error) => Inspection::Rejected(error),
+        },
+        Ok(format) => Inspection::Supported(format),
+        Err(error) => Inspection::Rejected(error),
+    }
+}
+
+impl InputFormat {
+    /// Formatos en que se puede entregar, el propio primero.
+    pub fn outputs(self) -> Vec<OutputFormat> {
+        let mut outputs = vec![self.same_output()];
+        for output in [
+            OutputFormat::Docx,
+            OutputFormat::Markdown,
+            OutputFormat::Text,
+        ] {
+            if output != self.same_output() && self.can_become(output) {
+                outputs.push(output);
+            }
+        }
+        outputs
+    }
+
+    /// Si un archivo de este formato se puede desanonimizar. Un PDF no:
+    /// se desanonimiza el DOCX, MD o TXT que se sacó de él.
+    pub fn deanonymizable(self) -> bool {
+        self != InputFormat::Pdf
     }
 }
 

@@ -144,11 +144,32 @@ impl Engine {
             .map(|(entities, _)| entities)
     }
 
+    /// Como `detect`, y llama a `progress` con la parte hecha (de 0 a 1)
+    /// después de cada lote del modelo. Con la lectura `ambos`, cada lectura
+    /// es la mitad.
+    pub fn detect_with_progress<S: AsRef<str>>(
+        &self,
+        segments: &[S],
+        progress: &dyn Fn(f32),
+    ) -> Result<Vec<Entity>> {
+        self.detect_inner(segments, &self.options, progress)
+            .map(|(entities, _)| entities)
+    }
+
     /// Como `detect_with`, y además devuelve el tiempo de cada fase.
     pub fn detect_timed<S: AsRef<str>>(
         &self,
         segments: &[S],
         options: &EngineOptions,
+    ) -> Result<(Vec<Entity>, Timings)> {
+        self.detect_inner(segments, options, &|_| {})
+    }
+
+    fn detect_inner<S: AsRef<str>>(
+        &self,
+        segments: &[S],
+        options: &EngineOptions,
+        progress: &dyn Fn(f32),
     ) -> Result<(Vec<Entity>, Timings)> {
         let mut timings = Timings::default();
         let clock = Instant::now();
@@ -161,11 +182,19 @@ impl Engine {
         timings.tokens = tokens.iter().map(Vec::len).sum();
 
         let (mut entities, windows) = match options.context {
-            ContextMode::Document => self.read(&texts, &tokens, true, options, &mut timings)?,
-            ContextMode::Paragraph => self.read(&texts, &tokens, false, options, &mut timings)?,
+            ContextMode::Document => {
+                self.read(&texts, &tokens, true, options, &mut timings, progress)?
+            }
+            ContextMode::Paragraph => {
+                self.read(&texts, &tokens, false, options, &mut timings, progress)?
+            }
             ContextMode::Combined => {
-                let (paragraph, w1) = self.read(&texts, &tokens, false, options, &mut timings)?;
-                let (document, w2) = self.read(&texts, &tokens, true, options, &mut timings)?;
+                let first = |done: f32| progress(done / 2.0);
+                let second = |done: f32| progress(0.5 + done / 2.0);
+                let (paragraph, w1) =
+                    self.read(&texts, &tokens, false, options, &mut timings, &first)?;
+                let (document, w2) =
+                    self.read(&texts, &tokens, true, options, &mut timings, &second)?;
                 let clock = Instant::now();
                 let merged = fusion::merge_passes(&texts, paragraph, document);
                 timings.decoding += clock.elapsed();
@@ -190,6 +219,7 @@ impl Engine {
         together: bool,
         options: &EngineOptions,
         timings: &mut Timings,
+        progress: &dyn Fn(f32),
     ) -> Result<(Vec<Entity>, usize)> {
         // Flujos de tokens que lee el modelo: uno con todos los segmentos
         // seguidos, o uno por segmento. `placement[s]` dice en qué flujo va
@@ -215,7 +245,7 @@ impl Engine {
             .map(|&n| plan_windows(n, max_len, overlap))
             .collect();
         let clock = Instant::now();
-        let logits = self.window_logits(&streams, &windows, options.batch_size)?;
+        let logits = self.window_logits(&streams, &windows, options.batch_size, progress)?;
         timings.inference += clock.elapsed();
         let clock = Instant::now();
 
@@ -280,6 +310,7 @@ impl Engine {
         tokens: &[Vec<u32>],
         windows: &[Vec<Window>],
         batch_size: usize,
+        progress: &dyn Fn(f32),
     ) -> Result<Vec<Vec<Vec<f32>>>> {
         let width = self.labels.len();
         let prefix = self.tokenizer.prefix();
@@ -287,7 +318,11 @@ impl Engine {
         let mut logits: Vec<Vec<Vec<f32>>> =
             windows.iter().map(|w| vec![Vec::new(); w.len()]).collect();
 
-        for batch in batch_windows(windows, batch_size) {
+        let batches = batch_windows(windows, batch_size);
+        let total = batches.len();
+        for (done, batch) in batches.into_iter().enumerate() {
+            // Al empezar cada lote: lo hecho hasta el anterior.
+            progress(done as f32 / total as f32);
             let sequences: Vec<Vec<u32>> = batch
                 .iter()
                 .map(|r| {
@@ -321,6 +356,7 @@ impl Engine {
                 logits[r.segment][index] = rows;
             }
         }
+        progress(1.0);
         Ok(logits)
     }
 }
