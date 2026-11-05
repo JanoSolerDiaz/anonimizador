@@ -18,7 +18,7 @@ use tracing::{Event, Metadata, Subscriber};
 use jiff::Zoned;
 use nucleo::almacen::Store;
 use nucleo::formatos::docx::DocxDocument;
-use nucleo::formatos::pdf::DEFAULT_RESOLUTION;
+use nucleo::formatos::pdf::{DEFAULT_RESOLUTION, PdfDocument};
 use nucleo::motor::troceado::{
     DOCUMENT_OVERLAP_TOKENS, DOCUMENT_WINDOW_TOKENS, MAX_WINDOW_TOKENS, OVERLAP_TOKENS,
     plan_windows,
@@ -410,5 +410,96 @@ fn anonymizing_and_deanonymizing_never_log_document_text_or_store_values() {
             .filter(|t| t.chars().count() >= 20),
     );
     forbidden.extend(SEGMENTS.map(str::to_owned));
+    assert_nothing_logged(&records, &forbidden);
+}
+
+#[test]
+#[ignore = "necesita PDFium: node scripts/descargar-binarios.mjs"]
+fn anonymizing_a_pdf_never_logs_document_text_or_store_values() {
+    const NAME: &str = "es-01-contrato-servicios";
+    let pdf = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../tests/corpus/pdf")
+        .join(format!("{NAME}.pdf"));
+    let json: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(pdf.with_extension("json")).unwrap()).unwrap();
+    let mut values: Vec<(String, String)> = json["entidades"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["texto"].as_str().unwrap().to_owned(),
+                e["tipo"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    values.sort_by_key(|(text, _)| std::cmp::Reverse(text.chars().count()));
+    let detector = Fake(values);
+    let dir = tempfile::tempdir().unwrap();
+
+    let capture = Capture::default();
+    let store = tracing::subscriber::with_default(capture.clone(), || {
+        let mut store = Store::new();
+        let options = |format| AnonymizeOptions {
+            format,
+            model: model_id("modelo"),
+            now: Zoned::now(),
+            spreadsheet_amounts: false,
+            pdf_resolution: DEFAULT_RESOLUTION,
+        };
+        for format in [OutputFormat::Pdf, OutputFormat::Markdown] {
+            let summary =
+                anonymize(&pdf, dir.path(), &detector, &mut store, &options(format)).unwrap();
+            if format == OutputFormat::Markdown {
+                let back = dir.path().join("vuelta");
+                std::fs::create_dir(&back).unwrap();
+                assert!(matches!(
+                    deanonymize(&summary.output, &back, &store, None).unwrap(),
+                    Outcome::Done(_)
+                ));
+            }
+        }
+        store
+    });
+    let records = capture.records.lock().unwrap().clone();
+
+    // Que la prueba no pase en vacío: dos documentos anonimizados, uno
+    // desanonimizado, y el PDF con sus páginas rasterizadas.
+    let count = |message: &str| {
+        records
+            .iter()
+            .filter(|r| r.fields.get("message").is_some_and(|m| m == message))
+            .count()
+    };
+    assert_eq!(count("documento anonimizado"), 2, "{records:?}");
+    assert_eq!(count("documento desanonimizado"), 1, "{records:?}");
+    assert!(
+        records.iter().any(|r| r
+            .fields
+            .get("paginas_rasterizadas")
+            .is_some_and(|n| n == "2")),
+        "{records:?}"
+    );
+
+    let mut forbidden: Vec<String> = vec![NAME.to_owned(), "contrato-servicios".to_owned()];
+    for entry in store.entries() {
+        forbidden.push(entry.value().to_owned());
+        forbidden.extend(
+            entry
+                .value()
+                .split(|c: char| c.is_whitespace() || c == ',')
+                .filter(|w| w.chars().count() >= 4 && w.chars().any(char::is_alphabetic))
+                .map(str::to_owned),
+        );
+    }
+    let document = PdfDocument::from_bytes(&std::fs::read(&pdf).unwrap()).unwrap();
+    for page in document.segments() {
+        forbidden.extend(
+            page.lines()
+                .filter(|l| l.chars().count() >= 20)
+                .map(str::to_owned),
+        );
+    }
+    assert!(store.entries().count() >= 8);
     assert_nothing_logged(&records, &forbidden);
 }

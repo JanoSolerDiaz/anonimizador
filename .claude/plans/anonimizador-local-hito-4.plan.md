@@ -95,4 +95,4 @@ Hecho: las seis tareas. Desviaciones respecto al plan, anotadas en `DECISIONES.m
 - Las páginas giradas salen sin giro, con el tamaño con que se ven.
 - La prueba de cobertura renderiza la salida sin los marcadores y exige que no quede nada del texto original, y que el marcador quede dentro de la zona del texto. La añadí después de ver en una imagen que los marcadores salían una línea más arriba; las pruebas de texto no lo detectaban.
 
-Pendiente fuera de este hito: enlaces con datos en páginas copiadas; la prueba de logs con un PDF.
+Cabos cerrados el 2026-11-05: los enlaces web de las páginas copiadas vuelven salvo los que llevan un dato (aplanar los borraba todos), la verificación mira sus destinos, y `nucleo/tests/logs.rs` cubre un PDF anonimizado a PDF y a MD.

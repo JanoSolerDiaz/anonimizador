@@ -256,8 +256,12 @@ PDFium no admite varios hilos. La función `thread_safe` de `pdfium-render` prot
 
 Un PDF de diez páginas con datos en todas tarda 9,5 s con 4 hilos a 200 ppp, verificación incluida, por debajo de los 15 s del PRD. De ellos, 7,8 s son del modelo. Está en `tests/informe-deteccion.md`.
 
+### Enlaces de las páginas copiadas · 2026-11-05
+
+Aplanar una página, que hace falta para que el texto de los formularios pase al contenido, borra también sus enlaces. Las páginas sin datos se quedaban sin enlaces, y el PRD dice que se conservan intactas. Ahora los enlaces web (a una URI) se leen antes de aplanar y se vuelven a poner en la copia, en el mismo sitio. Si el destino lleva un dato detectado en el documento, aunque vaya codificado (`marta%40correo.es`), ese enlace no se pone, y se avisa en el resumen. La verificación final revisa también los destinos de todos los enlaces de la salida.
+
 ### Qué no se procesa todavía
 
-- Los enlaces de una página sin datos se copian con la página. Si el destino de un enlace llevara un dato que no aparece en el texto visible, no se tapa y la verificación no lo ve, porque solo lee el texto.
+- Los enlaces internos (los que saltan a otra página del mismo documento) se pierden en las páginas copiadas, porque aplanar los borra y solo se recuperan los enlaces web.
 - El texto invisible de un PDF escaneado con OCR cuenta como texto: el documento no se rechaza, y los rectángulos se pintan donde PDFium sitúa ese texto.
 - Un formulario sin apariencia guardada para un campo puede no dejar su texto al aplanarse.
