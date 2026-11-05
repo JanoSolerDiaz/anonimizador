@@ -1,6 +1,8 @@
 //! Capa de Tauri: comandos que llaman a `nucleo` y eventos de progreso.
 //! Aquí no se procesa ningún documento.
 
+pub mod servicio;
+
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
