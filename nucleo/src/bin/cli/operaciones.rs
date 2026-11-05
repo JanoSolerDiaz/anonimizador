@@ -188,6 +188,12 @@ pub fn anonymize_files(args: &[String]) -> ExitCode {
                         summary.warnings.attachments
                     );
                 }
+                if summary.warnings.links > 0 {
+                    println!(
+                        "  Se han quitado {} enlaces que llevaban un dato en su destino.",
+                        summary.warnings.links
+                    );
+                }
             }
             Err(error) => eprintln!("{file}: {error}"),
         }

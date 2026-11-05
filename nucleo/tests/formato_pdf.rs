@@ -529,3 +529,98 @@ fn form_pdf() -> Vec<u8> {
         "",
     )
 }
+
+/// Destinos de los enlaces de cada página.
+fn link_uris(bytes: &[u8]) -> Vec<Vec<String>> {
+    let pdfium = pdf::pdfium().unwrap();
+    let document = pdfium.load_pdf_from_byte_slice(bytes, None).unwrap();
+    document
+        .pages()
+        .iter()
+        .map(|page| {
+            page.annotations()
+                .iter()
+                .filter_map(|a| {
+                    let link = a.as_link_annotation()?.link().ok()?;
+                    link.action()?.as_uri_action()?.uri().ok()
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Contrato con un correo en la página 1, y una página 2 sin datos a la
+/// vista con dos enlaces: uno al correo (codificado) y otro a una web.
+fn contract_with_links() -> Vec<u8> {
+    let email_line: &[Line] = &[(
+        72.0,
+        760.0,
+        "Correo: marta.gonzalez@correo-ejemplo.es",
+        12.0,
+    )];
+    build(
+        &[
+            email_line,
+            &[(72.0, 760.0, "Escr\u{ed}banos o visite la web.", 12.0)],
+        ],
+        |document| {
+            let mut page = document.pages().get(1).unwrap();
+            let annotations = page.annotations_mut();
+            for uri in [
+                "mailto:marta.gonzalez%40correo-ejemplo.es",
+                "https://www.ejemplo.es/contacto",
+            ] {
+                let mut link = annotations.create_link_annotation(uri).unwrap();
+                link.set_bounds(PdfRect::new_from_values(750.0, 72.0, 772.0, 300.0))
+                    .unwrap();
+            }
+        },
+    )
+}
+
+#[test]
+#[ignore = "necesita PDFium: node scripts/descargar-binarios.mjs"]
+fn links_to_a_value_are_removed_from_copied_pages() {
+    let original = contract_with_links();
+    assert_eq!(
+        link_uris(&original)[1].len(),
+        2,
+        "la prueba necesita los dos enlaces"
+    );
+    let document = PdfDocument::from_bytes(&original).unwrap();
+    let email = replace(
+        &document,
+        0,
+        "marta.gonzalez@correo-ejemplo.es",
+        "[EMAIL_0001]",
+    );
+    let output = document
+        .write(&[email], &WriteOptions::default(), &mut no_short_form)
+        .unwrap();
+    assert_eq!(output.rasterized_pages, 1);
+
+    assert_eq!(output.removed_links, 1);
+    let links = link_uris(&output.bytes);
+    assert_eq!(links[1], ["https://www.ejemplo.es/contacto"]);
+    assert_eq!(page_texts(&output.bytes)[1], "Escríbanos o visite la web.");
+    verify(&output.bytes, &["marta.gonzalez@correo-ejemplo.es"]).unwrap();
+}
+
+#[test]
+#[ignore = "necesita PDFium: node scripts/descargar-binarios.mjs"]
+fn verification_looks_at_link_targets_too() {
+    let only_in_a_link = build(
+        &[&[(72.0, 760.0, "Sin datos a la vista.", 12.0)]],
+        |document| {
+            let mut page = document.pages().get(0).unwrap();
+            page.annotations_mut()
+                .create_link_annotation("mailto:marta.gonzalez%40correo-ejemplo.es")
+                .unwrap();
+        },
+    );
+    assert!(matches!(
+        verify(&only_in_a_link, &["marta.gonzalez@correo-ejemplo.es"]),
+        Err(Error::PdfVerificationFailed)
+    ));
+    verify(&only_in_a_link, &["pablo@correo-ejemplo.es"]).unwrap();
+}

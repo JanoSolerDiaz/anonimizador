@@ -167,7 +167,7 @@ pub fn anonymize(
     if let Source::Pdf(document) = &source {
         replacements = document.with_literals(&replacements, &literals);
     }
-    let mut rasterized_pages = 0;
+    let (mut rasterized_pages, mut removed_links) = (0, 0);
     let data = match (&source, options.format) {
         (Source::Pdf(document), OutputFormat::Pdf) => document
             .write(
@@ -179,6 +179,7 @@ pub fn anonymize(
             )
             .map(|written| {
                 rasterized_pages = written.rasterized_pages;
+                removed_links = written.removed_links;
                 written.bytes
             }),
         _ => output_bytes(&source, options.format, &replacements, &literals),
@@ -238,6 +239,7 @@ pub fn anonymize(
     let warnings = match &source {
         Source::Pdf(document) => Warnings {
             attachments: document.attachments(),
+            links: removed_links,
             ..Warnings::default()
         },
         Source::Docx(document) => document.warnings(),

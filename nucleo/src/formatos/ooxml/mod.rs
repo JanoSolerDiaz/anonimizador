@@ -106,6 +106,8 @@ pub struct Warnings {
     pub objects: usize,
     /// Archivos adjuntos de un PDF, que se quitan de la salida.
     pub attachments: usize,
+    /// Enlaces de un PDF con un dato en el destino, que se quitan.
+    pub links: usize,
 }
 
 /// Paquete abierto para leer sus partes.

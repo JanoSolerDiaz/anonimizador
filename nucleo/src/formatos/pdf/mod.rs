@@ -260,7 +260,8 @@ impl PdfDocument {
 }
 
 /// Verificación obligatoria (PRD): vuelve a extraer el texto de `bytes` y
-/// busca cada valor. Si aparece alguno, o la salida trae adjuntos, falla.
+/// busca cada valor, también en los destinos de los enlaces. Si aparece
+/// alguno, o la salida trae adjuntos, falla.
 pub fn verify(bytes: &[u8], values: &[&str]) -> Result<()> {
     let pdfium = pdfium()?;
     let document = open(&pdfium, bytes)?;
@@ -272,6 +273,14 @@ pub fn verify(bytes: &[u8], values: &[&str]) -> Result<()> {
         if values
             .iter()
             .any(|value| !find_value(&text.text, value).is_empty())
+        {
+            return Err(Error::PdfVerificationFailed);
+        }
+        // Los destinos de los enlaces no se ven, pero van en el archivo.
+        if escritura::link_targets(&page)
+            .iter()
+            .flatten()
+            .any(|target| escritura::has_value(target, values))
         {
             return Err(Error::PdfVerificationFailed);
         }

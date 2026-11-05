@@ -6,7 +6,7 @@
 use image::{DynamicImage, Rgba, RgbaImage};
 use pdfium_render::prelude::*;
 
-use super::{PdfDocument, Rect, open, pdf_error, pdfium};
+use super::{PdfDocument, Rect, find_value, open, pdf_error, pdfium};
 use crate::formatos::{Replacement, order_for_writing};
 use crate::{Error, Result};
 
@@ -47,6 +47,9 @@ pub struct PdfOutput {
     pub rasterized_pages: usize,
     /// Marcadores escritos en forma corta.
     pub short_forms: usize,
+    /// Enlaces de páginas copiadas que se han quitado por llevar un dato
+    /// en el destino.
+    pub removed_links: usize,
 }
 
 pub(super) fn write(
@@ -69,14 +72,34 @@ pub(super) fn write(
     let source = open(&pdfium, document.bytes())?;
     // Aplanadas, las páginas que se copian llevan el texto de sus campos y
     // anotaciones en el contenido, y no dependen del formulario del original.
+    // Aplanar borra también los enlaces: los enlaces a una URI se leen antes
+    // y se vuelven a poner en la copia.
+    let mut links = Vec::new();
     for mut page in source.pages().iter() {
+        links.push(uri_links(&page));
         page.flatten().map_err(pdf_error)?;
     }
+
+    // Los valores que se tapan: el texto original de cada sustitución.
+    let mut values: Vec<String> = Vec::new();
+    for r in replacements {
+        let value: String = document.pages[r.segment]
+            .text
+            .chars()
+            .skip(r.start)
+            .take(r.end - r.start)
+            .collect();
+        if !values.contains(&value) {
+            values.push(value);
+        }
+    }
+    let values: Vec<&str> = values.iter().map(String::as_str).collect();
 
     let mut output = pdfium.create_new_pdf().map_err(pdf_error)?;
     let font = output.fonts_mut().helvetica();
     let mut rasterized_pages = 0;
     let mut short_forms = 0;
+    let mut removed_links = 0;
     for (index, page_text) in document.pages.iter().enumerate() {
         let own: Vec<&Replacement> = replacements.iter().filter(|r| r.segment == index).collect();
         let destination = output.pages().len();
@@ -85,6 +108,18 @@ pub(super) fn write(
                 .pages_mut()
                 .copy_page_from_document(&source, index as PdfPageIndex, destination)
                 .map_err(pdf_error)?;
+            // Sus enlaces vuelven, salvo los que llevan un dato en el destino.
+            let mut page = output.pages().get(destination).map_err(pdf_error)?;
+            for (uri, bounds) in &links[index] {
+                if has_value(&percent_decode(uri), &values) {
+                    removed_links += 1;
+                    continue;
+                }
+                page.annotations_mut()
+                    .create_link_annotation(uri)
+                    .and_then(|mut link| link.set_bounds(*bounds))
+                    .map_err(pdf_error)?;
+            }
             continue;
         }
         rasterized_pages += 1;
@@ -181,6 +216,7 @@ pub(super) fn write(
         bytes,
         rasterized_pages,
         short_forms,
+        removed_links,
     })
 }
 
@@ -242,6 +278,63 @@ impl Geometry {
             top: y0.max(y1),
         }
     }
+}
+
+/// Destino (URI) de cada anotación de la página, en su orden; `None` si no
+/// es un enlace a una URI. Va decodificado: `marta%40correo.es` es
+/// `marta@correo.es`.
+pub(super) fn link_targets(page: &PdfPage) -> Vec<Option<String>> {
+    page.annotations()
+        .iter()
+        .map(|annotation| {
+            let link = annotation.as_link_annotation()?.link().ok()?;
+            let uri = link.action()?.as_uri_action()?.uri().ok()?;
+            Some(percent_decode(&uri))
+        })
+        .collect()
+}
+
+/// Si algún valor aparece en el destino de un enlace, con la misma regla que
+/// la verificación.
+pub(super) fn has_value(target: &str, values: &[&str]) -> bool {
+    values.iter().any(|v| !find_value(target, v).is_empty())
+}
+
+/// Enlaces a una URI de la página: el destino tal cual y su rectángulo.
+fn uri_links(page: &PdfPage) -> Vec<(String, PdfRect)> {
+    page.annotations()
+        .iter()
+        .filter_map(|annotation| {
+            let bounds = annotation.bounds().ok()?;
+            let link = annotation.as_link_annotation()?.link().ok()?;
+            let uri = link.action()?.as_uri_action()?.uri().ok()?;
+            Some((uri, bounds))
+        })
+        .collect()
+}
+
+/// Deshace los `%XX` de una URI. Un `%` sin dos cifras hexadecimales detrás
+/// se deja como está.
+fn percent_decode(uri: &str) -> String {
+    let bytes = uri.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = |b: u8| (b as char).to_digit(16);
+        if bytes[i] == b'%'
+            && let (Some(high), Some(low)) = (
+                bytes.get(i + 1).copied().and_then(hex),
+                bytes.get(i + 2).copied().and_then(hex),
+            )
+        {
+            out.push((high * 16 + low) as u8);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Une las cajas en una por línea: una caja sigue en la línea si se solapa
