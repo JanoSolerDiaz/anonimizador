@@ -32,7 +32,9 @@ export const backend = {
   },
 };
 
-export function respond(command: string, answer: unknown | Handler): void {
+export function respond(command: string, answer: Handler): void;
+export function respond(command: string, answer: unknown): void;
+export function respond(command: string, answer: unknown): void {
   backend.handlers[command] =
     typeof answer === "function" ? (answer as Handler) : () => structuredClone(answer);
 }
