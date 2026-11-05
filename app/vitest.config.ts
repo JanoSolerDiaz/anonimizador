@@ -10,10 +10,11 @@ export default mergeConfig(
     test: {
       environment: "jsdom",
       include: ["src/**/*.test.ts"],
+      setupFiles: ["src/test/setup.ts"],
       coverage: {
         provider: "v8",
         include: ["src/**/*.{ts,svelte}"],
-        exclude: ["src/**/*.test.ts"],
+        exclude: ["src/**/*.test.ts", "src/test/**"],
         reporter: ["text", "html"],
         thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
       },

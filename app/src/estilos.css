@@ -6,6 +6,12 @@
   --color-texto-suave: #5f6368;
   --color-borde: #dadce0;
   --color-acento: #1a73e8;
+  --color-texto-acento: #ffffff;
+  --color-resalte: #e8f0fe;
+  --color-aviso: #9a5b00;
+  --color-error: #c5221f;
+  --color-fondo-error: #fce8e6;
+  --color-hecho: #137333;
 
   --espacio-1: 4px;
   --espacio-2: 8px;
@@ -26,6 +32,12 @@
     --color-texto-suave: #a8a8a8;
     --color-borde: #3c3c3c;
     --color-acento: #8ab4f8;
+    --color-texto-acento: #1e1e1e;
+    --color-resalte: #263445;
+    --color-aviso: #fdd663;
+    --color-error: #f28b82;
+    --color-fondo-error: #3c2424;
+    --color-hecho: #81c995;
   }
 }
 
@@ -37,4 +49,38 @@
 
 body {
   margin: 0;
+  background: var(--color-fondo);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+select {
+  font: inherit;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+  padding: var(--espacio-1) var(--espacio-3);
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.principal {
+  background: var(--color-acento);
+  border-color: var(--color-acento);
+  color: var(--color-texto-acento);
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
 }
