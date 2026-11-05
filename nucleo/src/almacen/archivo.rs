@@ -244,7 +244,7 @@ fn save_with(
 }
 
 /// `almacen.anon` → `almacen.anon.bak`.
-fn backup_path(path: &Path) -> PathBuf {
+pub(crate) fn backup_path(path: &Path) -> PathBuf {
     let mut name = OsString::from(path.as_os_str());
     name.push(".bak");
     PathBuf::from(name)

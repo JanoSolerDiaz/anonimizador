@@ -14,6 +14,7 @@
 
 pub mod archivo;
 pub mod diccionario;
+pub mod sesion;
 
 use std::collections::{BTreeMap, HashMap};
 

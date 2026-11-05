@@ -1,30 +1,31 @@
-//! Abrir y guardar el almacén, y la orden `cli almacen`.
+//! Abrir y guardar el almacén, y la orden `cli almacen`. El almacén abierto
+//! es el de `nucleo` ([`sesion::OpenStore`]); aquí solo se elige su ruta y
+//! los errores pasan a texto para el usuario.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use jiff::Zoned;
-use nucleo::almacen::Store;
-use nucleo::almacen::archivo::{self, KeyProvider, MemoryKey, StoreKey, SystemKeyring};
-use nucleo::formatos::salida::{Suffix, description, save_new};
+use nucleo::almacen::archivo;
+use nucleo::almacen::sesion::{self, EXPORT_WARNING};
 
 use super::ArgsError;
 
-/// Variable con una clave de prueba en hexadecimal. Solo la aceptan las
-/// compilaciones de depuración, para que las pruebas no toquen el almacén de
-/// credenciales del sistema; las de `--release` la ignoran.
-const TEST_KEY_ENV: &str = "ANONIMIZADOR_CLAVE_PRUEBA";
-
-/// Aviso del PRD al exportar un diccionario.
-const EXPORT_WARNING: &str = "Este archivo contiene los datos originales sin cifrar. Envíalo solo a quien deba desanonimizar el documento, y nunca junto al documento anonimizado.";
-
 /// Almacén abierto, con los documentos caducados ya borrados.
-pub struct OpenStore {
-    pub path: PathBuf,
-    pub store: Store,
-    /// Documentos caducados que se borraron al abrirlo.
-    pub purged: usize,
-    keys: Box<dyn KeyProvider>,
+pub struct OpenStore(sesion::OpenStore);
+
+impl std::ops::Deref for OpenStore {
+    type Target = sesion::OpenStore;
+
+    fn deref(&self) -> &sesion::OpenStore {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for OpenStore {
+    fn deref_mut(&mut self) -> &mut sesion::OpenStore {
+        &mut self.0
+    }
 }
 
 impl OpenStore {
@@ -39,58 +40,22 @@ impl OpenStore {
                     .to_owned()
             })?,
         };
-        let keys = keys()?;
-        let mut store = archivo::load(&path, keys.as_ref()).map_err(|e| e.to_string())?;
-        let before = store.documents().len();
-        store.purge(Zoned::now().date());
-        let purged = before - store.documents().len();
-        Ok(OpenStore {
-            path,
-            store,
-            purged,
-            keys,
-        })
+        sesion::OpenStore::open(&path, Zoned::now().date())
+            .map(OpenStore)
+            .map_err(|e| e.to_string())
     }
 
     /// Guarda el almacén entero, creando su carpeta si hace falta.
     pub fn save(&self) -> Result<(), String> {
-        if let Some(parent) = self.path.parent()
-            && !parent.as_os_str().is_empty()
-        {
-            std::fs::create_dir_all(parent).map_err(|e| nucleo::Error::from(e).to_string())?;
-        }
-        archivo::save(&self.path, &self.store, self.keys.as_ref()).map_err(|e| e.to_string())
+        self.0.save().map_err(|e| e.to_string())
     }
 
     /// Guarda solo si al abrirlo se borró algo.
     pub fn save_if_purged(&self) -> Result<(), String> {
-        if self.purged > 0 { self.save() } else { Ok(()) }
+        self.0.save_if_purged().map_err(|e| e.to_string())
     }
 }
 
-fn keys() -> Result<Box<dyn KeyProvider>, String> {
-    if cfg!(debug_assertions)
-        && let Ok(hex) = std::env::var(TEST_KEY_ENV)
-    {
-        let key = parse_hex(&hex)
-            .and_then(|bytes| StoreKey::from_bytes(&bytes))
-            .ok_or_else(|| format!("{TEST_KEY_ENV} debe tener 64 cifras hexadecimales."))?;
-        return Ok(Box::new(MemoryKey::with_key(key)));
-    }
-    Ok(Box::new(SystemKeyring::new()))
-}
-
-fn parse_hex(hex: &str) -> Option<Vec<u8>> {
-    if !hex.len().is_multiple_of(2) || !hex.is_ascii() {
-        return None;
-    }
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).ok())
-        .collect()
-}
-
-/// Lo que se pide con `cli almacen`.
 enum Action<'a> {
     List,
     Export { id: &'a str, dir: &'a str },
@@ -237,38 +202,14 @@ fn list(open: &OpenStore) {
 }
 
 fn export(open: &OpenStore, id: &str, dir: &Path) -> Result<(), String> {
-    let bytes = open
-        .store
-        .export_dictionary(id)
-        .map_err(|e| e.to_string())?;
-    let record = open
-        .store
-        .documents()
-        .iter()
-        .find(|d| d.id == id)
-        .expect("el documento existe si se ha exportado");
-    let path = save_new(
-        dir,
-        &description(Path::new(&record.output.name)),
-        Suffix::Dictionary,
-        "json",
-        |out| Ok(out.write_all(&bytes)?),
-    )
-    .map_err(|e| e.to_string())?;
+    let path = open.export(id, dir).map_err(|e| e.to_string())?;
     println!("Diccionario exportado: {}", path.display());
     eprintln!("{EXPORT_WARNING}");
     Ok(())
 }
 
 fn import(open: &mut OpenStore, file: &Path) -> Result<(), String> {
-    let bytes = std::fs::read(file).map_err(|e| nucleo::Error::from(e).to_string())?;
-    let name = file
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    open.store
-        .import_dictionary(&bytes, &name)
-        .map_err(|e| e.to_string())?;
+    let name = open.0.import(file).map_err(|e| e.to_string())?;
     println!("Diccionario importado: {name}.");
     Ok(())
 }
