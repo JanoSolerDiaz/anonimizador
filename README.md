@@ -35,10 +35,22 @@ cd app && npm ci && cd ..
 cargo run -p nucleo --bin cli -- comprobar-recursos
 ```
 
-## Desarrollo
+## La app
+
+Una ventana con dos pestañas. En **Anonimizar** se sueltan los documentos (o se eligen con «Elegir archivos…»); cada uno aparece con su tipo y su formato de salida, que se puede cambiar para todos o archivo a archivo. Debajo se eligen los tipos opcionales que se sustituyen, los importes de Excel y la resolución de los PDF, cuando hacen falta, y la carpeta de salida, que se recuerda. Al pulsar **Anonimizar**, cada archivo muestra su progreso y, al terminar, los datos encontrados por tipo y los avisos, con el botón **Abrir carpeta**.
+
+En **Desanonimizar** se sueltan los documentos anonimizados (DOCX, PPTX, XLSX, MD o TXT; un PDF no) o se pega texto. El resumen dice cuántos marcadores se restauraron y cuáles no están en el almacén. El texto restaurado se copia con **Copiar**. Si un marcador tiene valores distintos en el almacén y en un diccionario recibido, se elige cuál usar para ese documento.
+
+El botón **Almacén** abre el panel con los documentos anonimizados (exportar su diccionario u olvidarlos), los diccionarios recibidos, **Importar diccionario** y **Vaciar todo**. El modelo se carga en segundo plano al abrir la app: mientras tanto se pueden ir añadiendo archivos.
 
 ```bash
 cd app && npm run tauri dev
+
+# Sin tocar el almacén ni la clave del usuario (solo en depuración)
+ANONIMIZADOR_CLAVE_PRUEBA=<64 cifras hexadecimales> ANONIMIZADOR_ALMACEN=/tmp/almacen.anon npm run tauri dev
+
+# Pruebas de la interfaz y comprobación de tipos
+cd app && npm test && npm run check
 ```
 
 ## Motor de detección

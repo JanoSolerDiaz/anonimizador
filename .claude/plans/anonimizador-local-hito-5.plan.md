@@ -68,3 +68,9 @@ Decisiones (se anotan en `DECISIONES.md`):
 | El arrastre de archivos de Tauri cambia entre versiones | Media | Se usa la API de la versión fijada y se prueba con la app real |
 | No poder recorrer la app real de forma automática | Media | El servicio se prueba sin Tauri; la interfaz, con la API simulada; la app real se abre a mano |
 | Bloquear la interfaz con trabajo pesado | Baja | Todo el trabajo va en hilos aparte; los comandos devuelven enseguida |
+
+## Estado (2026-11-05)
+
+Hecho: las cinco tareas. `nucleo` tiene el almacén abierto compartido, el análisis en dos fases con progreso y la inspección de archivos; la app, el servicio, los comandos y la interfaz. Pruebas: `nucleo`, el servicio (10), la configuración de Tauri (12) y la interfaz (40, con un 86 % de ramas cubiertas). La app se recorrió de verdad con `tauri dev` y el modelo real.
+
+Pendiente para el hito 6: los recursos (modelo, ONNX Runtime y PDFium) dentro del paquete; ahora la app los busca en `recursos/` del proyecto si el paquete no los trae.

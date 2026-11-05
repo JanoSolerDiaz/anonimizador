@@ -97,12 +97,12 @@ export function warningLines(warnings: Warnings): string[] {
   }
   if (warnings.attachments > 0) {
     lines.push(
-      `El PDF tenía ${warnings.attachments} ${plural(warnings.attachments, "archivo adjunto", "archivos adjuntos")}. Se han quitado de la salida.`,
+      `El PDF tenía ${warnings.attachments} ${plural(warnings.attachments, "archivo adjunto. Se ha quitado", "archivos adjuntos. Se han quitado")} de la salida.`,
     );
   }
   if (warnings.links > 0) {
     lines.push(
-      `Se han quitado ${warnings.links} ${plural(warnings.links, "enlace que llevaba", "enlaces que llevaban")} un dato en su destino.`,
+      `${plural(warnings.links, "Se ha quitado", "Se han quitado")} ${warnings.links} ${plural(warnings.links, "enlace que llevaba", "enlaces que llevaban")} un dato en su destino.`,
     );
   }
   return lines;

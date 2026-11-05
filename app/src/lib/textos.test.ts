@@ -33,8 +33,8 @@ describe("textos", () => {
     expect(warningLines({ images: 2, objects: 1, attachments: 1, links: 1 })).toEqual([
       "El documento tiene 2 imágenes. Su contenido no se ha revisado.",
       "El documento tiene 1 objeto incrustado. Su contenido no se ha revisado.",
-      "El PDF tenía 1 archivo adjunto. Se han quitado de la salida.",
-      "Se han quitado 1 enlace que llevaba un dato en su destino.",
+      "El PDF tenía 1 archivo adjunto. Se ha quitado de la salida.",
+      "Se ha quitado 1 enlace que llevaba un dato en su destino.",
     ]);
     expect(warningLines({ images: 1, objects: 3, attachments: 2, links: 4 })).toEqual([
       "El documento tiene 1 imagen. Su contenido no se ha revisado.",

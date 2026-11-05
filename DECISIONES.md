@@ -265,3 +265,51 @@ Aplanar una página, que hace falta para que el texto de los formularios pase al
 - Los enlaces internos (los que saltan a otra página del mismo documento) se pierden en las páginas copiadas, porque aplanar los borra y solo se recuperan los enlaces web.
 - El texto invisible de un PDF escaneado con OCR cuenta como texto: el documento no se rechaza, y los rectángulos se pintan donde PDFium sitúa ese texto.
 - Un formulario sin apariencia guardada para un campo puede no dejar su texto al aplanarse.
+
+## Hito 5 · Interfaz · 2026-11-05
+
+La app hace lo mismo que la CLI desde una ventana, como describe el PRD en «Experiencia de usuario». Lo que sigue son las decisiones tomadas al hacerla.
+
+### El trabajo está en un servicio sin Tauri
+
+Todo lo que hace cada botón está en `app/src-tauri/src/servicio/`, que no depende de Tauri y se prueba con `cargo test` y un detector falso. Los comandos de Tauri (`comandos.rs`) solo lo llaman en otro hilo. El almacén abierto, con su clave, su purga y «empezar de nuevo», pasó de la CLI a `nucleo::almacen::sesion` para que lo compartan la CLI y la app.
+
+### Dos archivos a la vez, sin bloquear el almacén mientras se analizan
+
+Anonimizar se partió en dos fases: preparar (leer y detectar, sin almacén) y terminar (marcadores, escritura, verificación y registro, con el almacén). Dos archivos se preparan a la vez, como pide el PRD, y el almacén solo se bloquea para terminar. El modelo sigue haciendo una pasada cada vez, porque su sesión va protegida por un candado, pero mientras un archivo usa el modelo el otro lee o escribe.
+
+### Progreso por fases y por lotes del modelo
+
+Cada archivo pasa por «En cola», «Leyendo», «Analizando N %», «Escribiendo», «Comprobando» (solo los PDF, por la verificación) y su resultado. El porcentaje sale de los lotes del modelo; con la lectura `ambos`, cada lectura cuenta como la mitad. Como pide el PRD, como mucho llega un aviso de análisis cada 100 ms por archivo, y siempre el último.
+
+### Los diálogos de archivos se abren desde Rust
+
+Elegir archivos, elegir carpeta, importar un diccionario y abrir la carpeta de salida son comandos propios de la app. El plugin de diálogo se usa desde Rust y la carpeta se abre con el explorador del sistema, así que la interfaz sigue sin más permisos que `core:event:default` y `core:window:default`, y no tiene acceso a ningún archivo. Rust comprueba cada ruta que recibe: los archivos deben ser regulares y legibles, y la carpeta de salida debe existir.
+
+### Almacén que no se abre
+
+Si falta la clave o el almacén no se puede descifrar, la ventana lo dice y ofrece «Empezar un almacén nuevo». El antiguo no se borra: se renombra a `almacen.anon.no-se-pudo-abrir-AAAA-MM-DD` (con `_2`, `_3` si ya existe), junto a su copia `.bak`.
+
+### Ajustes recordados
+
+La última carpeta de salida y los tipos que el usuario dejó sin sustituir se guardan en `ajustes.json`, en la carpeta de configuración de la app. No llevan nada de los documentos. La misma carpeta sirve para anonimizar y para desanonimizar.
+
+### Opciones junto al selector de formato
+
+Las casillas de los tipos opcionales (decisión del hito 2) van bajo «Sustituir también». «Importes en Excel» solo aparece si hay algún XLSX en la lista, y la resolución de PDF (150, 200 o 300 ppp) solo si algún archivo sale en PDF.
+
+### Conflictos
+
+Si un archivo tiene marcadores con valores distintos en el almacén y en un diccionario importado, su fila muestra las fuentes y se elige una para ese archivo, como dice el PRD. Solo ese archivo se vuelve a procesar. El texto pegado funciona igual.
+
+### Vaciar todo pide confirmación en el propio panel
+
+«Vaciar todo» se confirma con un segundo botón dentro del panel, que explica que no se podrá restaurar nada. No se usa la ventana de confirmación del navegador.
+
+### Almacén de prueba en depuración
+
+Para abrir la app sin tocar el almacén del usuario, las compilaciones de depuración aceptan, además de la clave de prueba, otra ruta para el almacén en `ANONIMIZADOR_ALMACEN`. Las de `--release` la ignoran.
+
+### Probado en la app real
+
+Además de las pruebas automáticas, la app se abrió con `tauri dev` y se recorrió con el puerto de depuración de WebView2. Se soltaron un TXT y el PDF del corpus, se anonimizaron con el modelo real (el PDF, con su verificación), se desanonimizó el TXT y un texto pegado, y se abrió el panel del almacén. El PDF quedó bloqueado en Desanonimizar, con su explicación.

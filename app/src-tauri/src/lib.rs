@@ -20,6 +20,11 @@ use servicio::{Config, Emitter, Service, SharedDetector};
 /// Nombre del evento por el que llegan todos los avisos a la interfaz.
 pub const EVENT: &str = "anonimizador";
 
+/// Variable con otra ruta para el almacén. Solo la aceptan las compilaciones
+/// de depuración, como la clave de prueba: así se prueba la app sin tocar el
+/// almacén del usuario.
+pub const STORE_PATH_ENV: &str = "ANONIMIZADOR_ALMACEN";
+
 /// Cada cuánto se mira si ha cambiado el día para purgar los caducados.
 const PURGE_CHECK: Duration = Duration::from_secs(60 * 60);
 
@@ -70,7 +75,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             let service = Arc::new(Service::new(Config {
-                store_path: archivo::default_path(),
+                store_path: store_path(),
                 settings_path: app
                     .path()
                     .app_config_dir()
@@ -114,4 +119,14 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("no se ha podido iniciar la aplicación");
+}
+
+/// El almacén de la carpeta de datos del usuario, u otro en depuración.
+fn store_path() -> Option<std::path::PathBuf> {
+    if cfg!(debug_assertions)
+        && let Some(path) = std::env::var_os(STORE_PATH_ENV).filter(|p| !p.is_empty())
+    {
+        return Some(path.into());
+    }
+    archivo::default_path()
 }
