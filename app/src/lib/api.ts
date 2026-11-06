@@ -114,6 +114,10 @@ export interface DictionaryView {
 }
 
 export interface StoreView {
+  /** Días hasta que caduca un documento nuevo. */
+  retentionDays: number;
+  /** Si el plazo lo fija la organización. */
+  retentionByPolicy: boolean;
   documents: DocumentView[];
   dictionaries: DictionaryView[];
 }

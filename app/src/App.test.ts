@@ -390,6 +390,8 @@ describe("desanonimizar", () => {
 
 describe("almacén", () => {
   const view = {
+    retentionDays: 30,
+    retentionByPolicy: true,
     documents: [
       {
         id: "doc-1",
@@ -416,6 +418,7 @@ describe("almacén", () => {
     expect(panel.getByText("05/11/2026")).toBeTruthy();
     expect(panel.getByText("03/02/2027")).toBeTruthy();
     expect(panel.getByText(/de-ana\.json · informe_anonimizado\.docx · 3 entradas/)).toBeTruthy();
+    expect(panel.getByText(/caducan a los 30 días.*El plazo lo fija su organización\./s)).toBeTruthy();
 
     await user.click(panel.getByRole("button", { name: "Exportar diccionario" }));
     expect(await panel.findByText("Este archivo contiene los datos originales sin cifrar.")).toBeTruthy();
@@ -453,10 +456,16 @@ describe("almacén", () => {
 
   it("se recarga cuando el almacén cambia y explica los errores", async () => {
     const user = await start();
-    respond("store_view", { documents: [], dictionaries: [] });
+    respond("store_view", {
+      retentionDays: 90,
+      retentionByPolicy: false,
+      documents: [],
+      dictionaries: [],
+    });
     await user.click(screen.getByRole("button", { name: "Abrir el almacén" }));
     const panel = within(await screen.findByRole("complementary", { name: "Almacén" }));
     expect(await panel.findByText("No hay documentos.")).toBeTruthy();
+    expect(panel.getByText(/caducan a los 90 días/).textContent).not.toContain("organización");
     expect(panel.getByText("No ha importado ninguno.")).toBeTruthy();
 
     respond("store_view", view);

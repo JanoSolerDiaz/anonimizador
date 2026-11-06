@@ -309,6 +309,10 @@ pub struct DictionaryView {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreView {
+    /// Días hasta que caduca un documento nuevo.
+    pub retention_days: u32,
+    /// Si ese plazo lo fija la organización (y el usuario no lo cambia).
+    pub retention_by_policy: bool,
     pub documents: Vec<DocumentView>,
     pub dictionaries: Vec<DictionaryView>,
 }

@@ -100,6 +100,11 @@
   {/if}
 
   {#if view}
+    <p class="explicacion">
+      Los documentos caducan a los {view.retentionDays} días y entonces se borran sus datos.
+      {#if view.retentionByPolicy}El plazo lo fija su organización.{/if}
+    </p>
+
     <h3>Documentos anonimizados</h3>
     {#if view.documents.length === 0}
       <p class="vacio">No hay documentos.</p>

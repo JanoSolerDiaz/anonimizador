@@ -88,6 +88,7 @@ pub fn run() {
                 keys: Box::new(default_keys),
                 model_id: model_id(DEFAULT_MODEL),
                 emitter: Arc::new(TauriEmitter(handle.clone())),
+                retention_policy: nucleo::almacen::politica::retention_policy(),
             }));
             app.manage(service.clone());
 

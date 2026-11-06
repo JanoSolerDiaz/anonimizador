@@ -313,3 +313,35 @@ Para abrir la app sin tocar el almacén del usuario, las compilaciones de depura
 ### Probado en la app real
 
 Además de las pruebas automáticas, la app se abrió con `tauri dev` y se recorrió con el puerto de depuración de WebView2. Se soltaron un TXT y el PDF del corpus, se anonimizaron con el modelo real (el PDF, con su verificación), se desanonimizó el TXT y un texto pegado, y se abrió el panel del almacén. El PDF quedó bloqueado en Desanonimizar, con su explicación.
+
+## Hito 6 · Empaquetado · 2026-11-06
+
+### El MSI lleva todo dentro
+
+`app/src-tauri/tauri.conf.json` mete el modelo (`recursos/modelo`, no el `modelo-v2` de la comparación) y `tauri.windows.conf.json` los binarios de Windows de ONNX Runtime y PDFium, con sus licencias. Quedan en `recursos/` junto al ejecutable, con la misma estructura que en el proyecto. La app los busca primero ahí y, si no están (al desarrollar), en `recursos/` del proyecto. PDFium recibe la misma carpeta que el motor (`pdf::use_resources`).
+
+El MSI pesa 442 MB: unos 280 son el modelo y casi todo lo demás es el instalador sin conexión de WebView2 (`webviewInstallMode: offlineInstaller`), que pide el PRD para equipos sin internet. Se instala por equipo, en «Archivos de programa», y admite `msiexec /i … /qn`.
+
+Se comprobó sin instalarlo: el MSI se extrajo con `msiexec /a` y el ejecutable de esa copia, fuera del proyecto, cargó el modelo y abrió un PDF con los recursos del paquete.
+
+### Firma
+
+No hay certificado en el equipo de desarrollo, así que el MSI sale sin firmar. `scripts/empaquetar-windows.ps1` firma el ejecutable y el MSI si `ANONIMIZADOR_CERT_HUELLA` tiene la huella de un certificado de firma de código instalado, con sello de tiempo. En Mac, `scripts/empaquetar-mac.sh` firma y notariza con las variables `APPLE_*`.
+
+### Mac, preparado y sin probar
+
+`tauri.macos.conf.json` (DMG, macOS 12, runtime endurecido, binarios de Apple Silicon) y `scripts/empaquetar-mac.sh` (app, DMG, PKG con `productbuild` y notarización) se escribieron en Windows, donde no se pueden compilar. Solo cubren Apple Silicon: ONNX Runtime 1.31 no publica binarios de Mac para Intel, así que no hay binario universal (ver «Pendiente para macOS», en el hito 1). Queda pendiente de Jano decidir si se admite Mac Intel.
+
+### Caducidad fijada por sistemas
+
+Windows: `HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Cuatroochenta\Anonimizador`, valor DWORD `DiasCaducidad`. Mac: la clave entera `DiasCaducidad` de un perfil con el dominio `com.cuatroochenta.anonimizador` (Jamf o Intune lo dejan en `/Library/Managed Preferences/`). Un valor fuera de 1 a 3650 días se ignora y se registra un aviso. La app no tiene ningún ajuste de caducidad, así que con política o sin ella el usuario no la cambia; el panel del almacén dice el plazo y, si lo fija la organización, lo dice.
+
+Con política, los documentos nuevos caducan a esos días. Los guardados con un plazo más largo pasan a caducar a esos días desde que se crearon, y el cambio se guarda; los que caducaban antes no cambian. Así, si sistemas acorta el plazo, los datos antiguos no se quedan más tiempo del que permite la política.
+
+### Lote con un archivo corrupto
+
+La prueba manual del lote de 20 archivos con uno corrupto se automatizó en `app/src-tauri/tests/servicio.rs`: los 19 válidos se procesan y el corrupto da un error en una frase. Las pruebas que siguen siendo manuales, con sus pasos, están en `tests/pruebas-manuales.md`.
+
+### El almacén de prueba del equipo de desarrollo
+
+Al abrir la app instalada en el equipo de desarrollo, el almacén no se abre: lo creó la CLI con la clave de prueba, que no está en el Administrador de credenciales. Es el aviso previsto, con «Empezar un almacén nuevo». No se tocó.

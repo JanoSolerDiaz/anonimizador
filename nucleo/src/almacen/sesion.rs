@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use jiff::civil::Date;
 
-use super::Store;
 use super::archivo::{self, KeyProvider, MemoryKey, StoreKey, SystemKeyring};
+use super::{Store, politica};
 use crate::formatos::salida::{Suffix, description, save_new};
 use crate::{Error, Result};
 
@@ -34,6 +34,10 @@ pub struct OpenStore {
     pub store: Store,
     /// Documentos caducados que se borraron al abrirlo.
     pub purged: usize,
+    /// Plazo fijado por sistemas, si lo hay.
+    policy: Option<u32>,
+    /// Si al abrirlo cambió algo (purga o plazos acortados por la política).
+    changed: bool,
     keys: Keys,
 }
 
@@ -41,12 +45,29 @@ impl OpenStore {
     /// Abre el almacén de `path` con la clave del sistema y borra los
     /// documentos caducados el día `today`.
     pub fn open(path: &Path, today: Date) -> Result<OpenStore> {
-        Self::open_with(path, default_keys()?, today)
+        Self::open_with_policy(path, default_keys()?, today, politica::retention_policy())
     }
 
-    /// Como [`OpenStore::open`], con otra clave.
+    /// Como [`OpenStore::open`], con otra clave y sin política.
     pub fn open_with(path: &Path, keys: Keys, today: Date) -> Result<OpenStore> {
+        Self::open_with_policy(path, keys, today, None)
+    }
+
+    /// Como [`OpenStore::open`], con otra clave y la política `policy`. Con
+    /// política, los documentos nuevos caducan a esos días y los guardados
+    /// no pasan de esos días desde su creación.
+    pub fn open_with_policy(
+        path: &Path,
+        keys: Keys,
+        today: Date,
+        policy: Option<u32>,
+    ) -> Result<OpenStore> {
         let mut store = archivo::load(path, keys.as_ref())?;
+        let mut capped = 0;
+        if let Some(days) = policy {
+            store = store.with_retention_days(days);
+            capped = store.cap_expiry(days);
+        }
         let before = store.documents().len();
         store.purge(today);
         let purged = before - store.documents().len();
@@ -54,8 +75,15 @@ impl OpenStore {
             path: path.to_path_buf(),
             store,
             purged,
+            policy,
+            changed: purged > 0 || capped > 0,
             keys,
         })
+    }
+
+    /// Plazo fijado por sistemas, si lo hay.
+    pub fn policy(&self) -> Option<u32> {
+        self.policy
     }
 
     /// Aparta el almacén de `path` que no se puede abrir, sin borrarlo, y
@@ -65,6 +93,7 @@ impl OpenStore {
         path: &Path,
         keys: Keys,
         today: Date,
+        policy: Option<u32>,
     ) -> Result<(OpenStore, Option<PathBuf>)> {
         let mut set_aside = None;
         for (from, extension) in [
@@ -79,10 +108,16 @@ impl OpenStore {
                 }
             }
         }
+        let store = match policy {
+            Some(days) => Store::new().with_retention_days(days),
+            None => Store::new(),
+        };
         let open = OpenStore {
             path: path.to_path_buf(),
-            store: Store::new(),
+            store,
             purged: 0,
+            policy,
+            changed: false,
             keys,
         };
         open.save()?;
@@ -106,9 +141,9 @@ impl OpenStore {
         archivo::save(&self.path, &self.store, self.keys.as_ref())
     }
 
-    /// Guarda solo si al abrirlo se borró algo.
+    /// Guarda solo si al abrirlo cambió algo.
     pub fn save_if_purged(&self) -> Result<()> {
-        if self.purged > 0 { self.save() } else { Ok(()) }
+        if self.changed { self.save() } else { Ok(()) }
     }
 
     /// Exporta el diccionario del documento `id` a `dir`, con el nombre

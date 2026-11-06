@@ -40,7 +40,15 @@ if ($env:ANONIMIZADOR_CERT_HUELLA) {
 & npm @argumentos
 if ($LASTEXITCODE -ne 0) { throw "La compilación ha fallado." }
 
+# SHA-256 con .NET: Get-FileHash no siempre está (falta su módulo si se
+# lanza desde otra consola).
+$sha = [System.Security.Cryptography.SHA256]::Create()
 Get-ChildItem (Join-Path $raiz "target\release\bundle\msi\*.msi") | ForEach-Object {
-    $huella = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+    $flujo = [System.IO.File]::OpenRead($_.FullName)
+    try {
+        $huella = -join ($sha.ComputeHash($flujo) | ForEach-Object { $_.ToString("x2") })
+    } finally {
+        $flujo.Dispose()
+    }
     Write-Host "$($_.Name)  $([math]::Round($_.Length / 1MB)) MB  sha256 $huella"
 }

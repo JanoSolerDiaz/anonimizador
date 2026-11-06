@@ -57,6 +57,8 @@ pub struct Config {
     pub keys: KeySource,
     pub model_id: String,
     pub emitter: Arc<dyn Emitter>,
+    /// Plazo de caducidad fijado por sistemas, si lo hay.
+    pub retention_policy: Option<u32>,
 }
 
 enum ModelState {
@@ -82,6 +84,7 @@ pub struct Service {
     busy: AtomicBool,
     /// Último día en que se purgaron los caducados.
     purged_on: Mutex<Date>,
+    retention_policy: Option<u32>,
 }
 
 type Answer<T> = Result<T, String>;
@@ -100,7 +103,9 @@ impl Service {
                 "No se encuentra la carpeta de datos del usuario para guardar el almacén.".into(),
             ),
             Some(path) => {
-                match (config.keys)().and_then(|keys| OpenStore::open_with(path, keys, today)) {
+                match (config.keys)().and_then(|keys| {
+                    OpenStore::open_with_policy(path, keys, today, config.retention_policy)
+                }) {
                     Ok(open) => {
                         if let Err(error) = open.save_if_purged() {
                             tracing::warn!(%error, "no se ha podido guardar la purga al abrir");
@@ -128,6 +133,7 @@ impl Service {
             emitter: config.emitter,
             busy: AtomicBool::new(false),
             purged_on: Mutex::new(today),
+            retention_policy: config.retention_policy,
         }
     }
 
@@ -385,6 +391,8 @@ impl Service {
             return Err("El almacén no está abierto.".into());
         };
         Ok(StoreView {
+            retention_days: open.store.retention_days(),
+            retention_by_policy: open.policy().is_some(),
             documents: open
                 .store
                 .documents()
@@ -459,7 +467,8 @@ impl Service {
         }
         let keys = (self.keys)().map_err(message)?;
         let (open, set_aside) =
-            OpenStore::start_over(&path, keys, Zoned::now().date()).map_err(message)?;
+            OpenStore::start_over(&path, keys, Zoned::now().date(), self.retention_policy)
+                .map_err(message)?;
         *store = StoreState::Open(Box::new(open));
         Ok(set_aside.map(|p| p.display().to_string()))
     }

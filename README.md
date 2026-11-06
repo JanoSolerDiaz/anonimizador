@@ -35,6 +35,24 @@ cd app && npm ci && cd ..
 cargo run -p nucleo --bin cli -- comprobar-recursos
 ```
 
+## Instaladores
+
+```powershell
+# Windows: MSI con el modelo, ONNX Runtime, PDFium y WebView2 sin conexión.
+# Con ANONIMIZADOR_CERT_HUELLA (huella de un certificado de firma de código) lo firma.
+powershell -ExecutionPolicy Bypass -File scripts\empaquetar-windows.ps1
+# → target\release\bundle\msi\Anonimizador_<versión>_x64_es-ES.msi
+# Instalación silenciosa: msiexec /i Anonimizador_<versión>_x64_es-ES.msi /qn
+```
+
+```bash
+# Mac (Apple Silicon), en un Mac: app, DMG y PKG, firmados y notarizados con las variables APPLE_*.
+# Sin probar todavía: ver DECISIONES.md.
+scripts/empaquetar-mac.sh
+```
+
+Sistemas puede fijar el plazo de caducidad del almacén: en Windows, el DWORD `DiasCaducidad` de `HKLM\SOFTWARE\Policies\Cuatroochenta\Anonimizador`; en Mac, la clave `DiasCaducidad` de un perfil con el dominio `com.cuatroochenta.anonimizador`. Las pruebas manuales para sistemas están en [`tests/pruebas-manuales.md`](tests/pruebas-manuales.md).
+
 ## La app
 
 Una ventana con dos pestañas. En **Anonimizar** se sueltan los documentos (o se eligen con «Elegir archivos…»); cada uno aparece con su tipo y su formato de salida, que se puede cambiar para todos o archivo a archivo. Debajo se eligen los tipos opcionales que se sustituyen, los importes de Excel y la resolución de los PDF, cuando hacen falta, y la carpeta de salida, que se recuerda. Al pulsar **Anonimizar**, cada archivo muestra su progreso y, al terminar, los datos encontrados por tipo y los avisos, con el botón **Abrir carpeta**.

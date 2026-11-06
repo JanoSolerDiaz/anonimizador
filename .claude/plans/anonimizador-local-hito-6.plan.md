@@ -37,3 +37,9 @@ Al terminar este hito hay un MSI de Windows que instala la app con el modelo, ON
 ### Task 5 — Pruebas y documentación
 - Lote de 20 archivos con uno corrupto en las pruebas del servicio.
 - `tests/pruebas-manuales.md` para sistemas; `DECISIONES.md`, `README.md`.
+
+## Estado (2026-11-06)
+
+Hecho en Windows: tareas 1, 2, 3 y 5. El MSI se genera con `scripts/empaquetar-windows.ps1`, se comprobó extraído sin instalar, y la caducidad por política está probada (salvo la lectura real del registro, que pide un administrador: queda en `tests/pruebas-manuales.md`, punto 6). La tarea 4 (Mac) queda escrita sin probar.
+
+Pendiente fuera de lo que se puede hacer aquí: certificados de firma, un Mac para compilar y probar, la decisión sobre Mac Intel y las medidas en el equipo de referencia.

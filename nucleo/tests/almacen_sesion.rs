@@ -91,7 +91,8 @@ fn a_store_that_cannot_be_opened_is_set_aside_not_deleted() {
         Err(Error::StoreUndecryptable)
     ));
 
-    let (fresh, set_aside) = OpenStore::start_over(&path, keys(&other), date(2026, 11, 5)).unwrap();
+    let (fresh, set_aside) =
+        OpenStore::start_over(&path, keys(&other), date(2026, 11, 5), None).unwrap();
     assert!(fresh.store.documents().is_empty());
     let set_aside = set_aside.expect("el antiguo queda apartado");
     assert_eq!(
@@ -108,7 +109,7 @@ fn a_store_that_cannot_be_opened_is_set_aside_not_deleted() {
     assert!(reopened.store.documents().is_empty());
 
     // Una segunda vez el mismo día no pisa la primera.
-    let (_, again) = OpenStore::start_over(&path, keys(&other), date(2026, 11, 5)).unwrap();
+    let (_, again) = OpenStore::start_over(&path, keys(&other), date(2026, 11, 5), None).unwrap();
     assert_eq!(
         again.unwrap().file_name().unwrap(),
         "almacen.anon.no-se-pudo-abrir-2026-11-05_2"
@@ -121,7 +122,8 @@ fn starting_over_without_a_store_just_creates_one() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("datos").join("almacen.anon");
     let shared = SharedKey(Arc::new(MemoryKey::new()));
-    let (open, set_aside) = OpenStore::start_over(&path, keys(&shared), date(2026, 11, 5)).unwrap();
+    let (open, set_aside) =
+        OpenStore::start_over(&path, keys(&shared), date(2026, 11, 5), None).unwrap();
     assert!(set_aside.is_none());
     assert!(open.store.documents().is_empty());
     assert!(path.exists());
@@ -151,4 +153,46 @@ fn a_dictionary_goes_out_and_comes_back_in() {
     let name = other.import(&exported).unwrap();
     assert_eq!(name, "contrato-cliente-anonimizado_diccionario.json");
     assert_eq!(other.store.imported().len(), 1);
+}
+
+#[test]
+fn a_retention_policy_shortens_stored_expiries_but_never_extends_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("almacen.anon");
+    let shared = SharedKey(Arc::new(MemoryKey::new()));
+    let mut open = OpenStore::open_with(&path, keys(&shared), date(2026, 11, 1)).unwrap();
+    // Creado el 2026-11-01 con 90 días; otro que ya caducaba antes.
+    open.store
+        .record_document(record("largo", date(2027, 1, 30)));
+    open.store
+        .record_document(record("corto", date(2026, 11, 3)));
+    open.save().unwrap();
+
+    let open =
+        OpenStore::open_with_policy(&path, keys(&shared), date(2026, 11, 2), Some(7)).unwrap();
+    assert_eq!(open.policy(), Some(7));
+    assert_eq!(open.store.retention_days(), 7);
+    let expires: Vec<_> = open.store.documents().iter().map(|d| d.expires).collect();
+    assert_eq!(expires, [date(2026, 11, 8), date(2026, 11, 3)]);
+    assert_eq!(
+        open.store.expiry_from(date(2026, 11, 2)),
+        date(2026, 11, 9),
+        "los nuevos caducan a los 7 días"
+    );
+    open.save_if_purged().unwrap();
+
+    // El plazo acortado queda guardado aunque se abra sin política.
+    let again = OpenStore::open_with(&path, keys(&shared), date(2026, 11, 2)).unwrap();
+    assert_eq!(again.store.documents()[0].expires, date(2026, 11, 8));
+    assert_eq!(again.policy(), None);
+
+    // Una política más larga no alarga nada.
+    let longer =
+        OpenStore::open_with_policy(&path, keys(&shared), date(2026, 11, 2), Some(365)).unwrap();
+    assert_eq!(longer.store.documents()[0].expires, date(2026, 11, 8));
+
+    // Y al llegar el día, se purga.
+    let later =
+        OpenStore::open_with_policy(&path, keys(&shared), date(2026, 11, 8), Some(7)).unwrap();
+    assert_eq!(later.purged, 2);
 }

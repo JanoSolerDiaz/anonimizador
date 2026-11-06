@@ -14,6 +14,7 @@
 
 pub mod archivo;
 pub mod diccionario;
+pub mod politica;
 pub mod sesion;
 
 use std::collections::{BTreeMap, HashMap};
@@ -354,6 +355,25 @@ impl Store {
             Some(existing) => *existing = document,
             None => self.documents.push(document),
         }
+    }
+
+    /// Con una política de `days` días, ningún documento caduca más tarde de
+    /// `days` días después de crearse: los que tenían más plazo lo pierden,
+    /// y los demás se quedan como estaban. Devuelve cuántos cambian.
+    pub fn cap_expiry(&mut self, days: u32) -> usize {
+        let span = Span::new().days(i64::from(days));
+        let mut changed = 0;
+        for document in &mut self.documents {
+            let created: Option<Date> = document.created.get(..10).and_then(|d| d.parse().ok());
+            if let Some(created) = created {
+                let cap = created.saturating_add(span);
+                if cap < document.expires {
+                    document.expires = cap;
+                    changed += 1;
+                }
+            }
+        }
+        changed
     }
 
     /// Borra los documentos que caducan `today` o antes, y las entradas que

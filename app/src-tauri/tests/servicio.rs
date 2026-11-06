@@ -114,6 +114,7 @@ impl World {
             keys: Box::new(move || Ok(Box::new(for_service.clone()) as Keys)),
             model_id: "modelo-de-prueba".to_owned(),
             emitter: events.clone(),
+            retention_policy: None,
         });
         World {
             dir,
@@ -633,4 +634,24 @@ fn a_batch_of_twenty_with_one_corrupt_file_processes_the_other_nineteen() {
         }
     );
     assert_eq!(world.reopen_store().store.documents().len(), 19);
+}
+
+#[test]
+fn the_store_panel_tells_the_retention_and_whether_it_is_a_policy() {
+    let world = World::new();
+    let view = world.service.store_view().unwrap();
+    assert_eq!((view.retention_days, view.retention_by_policy), (90, false));
+
+    let dir = tempfile::tempdir().unwrap();
+    let key = SharedKey(Arc::new(MemoryKey::new()));
+    let service = Service::new(Config {
+        store_path: Some(dir.path().join("almacen.anon")),
+        settings_path: None,
+        keys: Box::new(move || Ok(Box::new(key.clone()) as Keys)),
+        model_id: "modelo".to_owned(),
+        emitter: Arc::new(Recorder::default()),
+        retention_policy: Some(30),
+    });
+    let view = service.store_view().unwrap();
+    assert_eq!((view.retention_days, view.retention_by_policy), (30, true));
 }

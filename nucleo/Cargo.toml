@@ -54,3 +54,8 @@ jiff = { version = "0.2.38", features = ["serde"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+# Plazo de caducidad fijado por sistemas en el registro de Windows. De
+# Microsoft, solo lectura del registro, sin red.
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.100.0"
