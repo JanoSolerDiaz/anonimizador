@@ -55,7 +55,7 @@ Sistemas puede fijar el plazo de caducidad del almacén: en Windows, el DWORD `D
 
 ## La app
 
-Una ventana con dos pestañas. En **Anonimizar** se sueltan los documentos (o se eligen con «Elegir archivos…»); cada uno aparece con su tipo y su formato de salida, que se puede cambiar para todos o archivo a archivo. Debajo se eligen los tipos opcionales que se sustituyen, los importes de Excel y la resolución de los PDF, cuando hacen falta, y la carpeta de salida, que se recuerda. Al pulsar **Anonimizar**, cada archivo muestra su progreso y, al terminar, los datos encontrados por tipo y los avisos, con el botón **Abrir carpeta**.
+Una ventana con dos pestañas, bajo una cabecera con el logo de Cuatroochenta. En la cabecera, el botón del sol o la luna cambia entre modo claro y oscuro; la elección se recuerda y, mientras no se elija, se sigue el modo del sistema. En **Anonimizar** se sueltan los documentos (o se eligen con «Elegir archivos…»); cada uno aparece con su tipo y su formato de salida, que se puede cambiar para todos o archivo a archivo. Debajo se eligen los tipos opcionales que se sustituyen, los importes de Excel y la resolución de los PDF, cuando hacen falta, y la carpeta de salida, que se recuerda. Al pulsar **Anonimizar**, cada archivo muestra su progreso y, al terminar, los datos encontrados por tipo y los avisos, con el botón **Abrir carpeta**.
 
 En **Desanonimizar** se sueltan los documentos anonimizados (DOCX, PPTX, XLSX, MD o TXT; un PDF no) o se pega texto. El resumen dice cuántos marcadores se restauraron y cuáles no están en el almacén. El texto restaurado se copia con **Copiar**. Si un marcador tiene valores distintos en el almacén y en un diccionario recibido, se elige cuál usar para ese documento.
 

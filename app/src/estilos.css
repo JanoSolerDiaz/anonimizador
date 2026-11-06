@@ -1,13 +1,30 @@
-/* Variables y estilos base. Sin librerías de componentes. */
+/* Variables y estilos base con la marca Cuatroochenta (480). Sin librerías de componentes. */
+
+/* Poppins va dentro de la app: la política de seguridad solo deja cargar fuentes propias. */
+@import "@fontsource/poppins/latin-400.css";
+@import "@fontsource/poppins/latin-500.css";
+@import "@fontsource/poppins/latin-600.css";
+@import "@fontsource/poppins/latin-700.css";
 
 :root {
+  /* Colores de marca 480 */
+  --marca-verde: #39fe90;
+  --marca-cian: #1cf9fc;
+  --marca-rojo: #ff4950;
+  --marca-gris: #4d4d4d;
+
   --color-fondo: #ffffff;
-  --color-texto: #1d1d1f;
+  --color-cabecera: #ffffff;
+  --color-texto: #333333;
   --color-texto-suave: #5f6368;
-  --color-borde: #dadce0;
-  --color-acento: #1a73e8;
-  --color-texto-acento: #ffffff;
-  --color-resalte: #e8f0fe;
+  --color-texto-activo: #141414;
+  --color-borde: #e5e7eb;
+  /* El verde de marca va en fondos y bordes: sobre blanco no se lee como texto. */
+  --color-acento: var(--marca-verde);
+  --color-texto-acento: #141414;
+  --color-resalte: #e8fff1;
+  /* El contorno del foco necesita contraste sobre blanco: cian oscurecido. */
+  --color-foco: #00858a;
   --color-aviso: #9a5b00;
   --color-error: #c5221f;
   --color-fondo-error: #fce8e6;
@@ -16,8 +33,9 @@
   --espacio-1: 4px;
   --espacio-2: 8px;
   --espacio-3: 16px;
+  --espacio-4: 24px;
 
-  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: "Poppins", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: var(--color-texto);
@@ -25,20 +43,44 @@
   color-scheme: light dark;
 }
 
+/* Modo oscuro: si el usuario lo eligió, o si no eligió nada y el sistema está en oscuro.
+   Los dos bloques llevan los mismos valores: si se cambia uno, hay que cambiar el otro. */
+:root[data-tema="oscuro"] {
+  --color-fondo: #1b1b1b;
+  --color-cabecera: #141414;
+  --color-texto: #f1f1f1;
+  --color-texto-suave: #a8a8a8;
+  --color-texto-activo: #ffffff;
+  --color-borde: #2f2f2f;
+  --color-resalte: #1d3327;
+  --color-foco: var(--marca-cian);
+  --color-aviso: #fdd663;
+  --color-error: #ff8a8e;
+  --color-fondo-error: #3c2424;
+  --color-hecho: #81c995;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-fondo: #1e1e1e;
+  :root:not([data-tema="claro"]) {
+    --color-fondo: #1b1b1b;
+    --color-cabecera: #141414;
     --color-texto: #f1f1f1;
     --color-texto-suave: #a8a8a8;
-    --color-borde: #3c3c3c;
-    --color-acento: #8ab4f8;
-    --color-texto-acento: #1e1e1e;
-    --color-resalte: #263445;
+    --color-texto-activo: #ffffff;
+    --color-borde: #2f2f2f;
+    --color-resalte: #1d3327;
+    --color-foco: var(--marca-cian);
     --color-aviso: #fdd663;
-    --color-error: #f28b82;
+    --color-error: #ff8a8e;
     --color-fondo-error: #3c2424;
     --color-hecho: #81c995;
+    color-scheme: dark;
   }
+}
+
+:root[data-tema="claro"] {
+  color-scheme: light;
 }
 
 *,
@@ -62,9 +104,12 @@ select {
   color: var(--color-texto);
   background: var(--color-fondo);
   border: 1px solid var(--color-borde);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: var(--espacio-1) var(--espacio-3);
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 button:disabled,
@@ -81,6 +126,6 @@ button.principal {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-acento);
+  outline: 2px solid var(--color-foco);
   outline-offset: 2px;
 }

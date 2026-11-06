@@ -3,7 +3,7 @@ resolver = "3"
 members = ["nucleo", "app/src-tauri"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 # ort 2.0.0-rc.15 exige Rust 1.92 como mínimo.
 rust-version = "1.92"
