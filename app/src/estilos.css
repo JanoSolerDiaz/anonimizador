@@ -1,17 +1,36 @@
-/* Variables y estilos base. Sin librerías de componentes. */
+/* Variables y estilos base con la marca Cuatroochenta (480). Sin librerías de componentes. */
+
+/* Poppins va dentro de la app: la política de seguridad solo deja cargar fuentes propias. */
+@import "@fontsource/poppins/latin-400.css";
+@import "@fontsource/poppins/latin-500.css";
+@import "@fontsource/poppins/latin-600.css";
+@import "@fontsource/poppins/latin-700.css";
 
 :root {
+  /* Colores de marca 480 */
+  --marca-verde: #39fe90;
+  --marca-cian: #1cf9fc;
+  --marca-rojo: #ff4950;
+  --marca-gris: #4d4d4d;
+
   --color-fondo: #ffffff;
-  --color-texto: #1d1d1f;
-  --color-texto-suave: #5f6368;
-  --color-borde: #dadce0;
-  --color-acento: #1a73e8;
+  --color-fondo-alt: #f7f8fa;
+  --color-cabecera: #ffffff;
+  --color-texto: #333333;
+  --color-texto-suave: #6b6b6b;
+  --color-borde: #e5e7eb;
+  --color-acento: var(--marca-verde);
+  /* El verde no se lee como texto sobre blanco: el texto activo va en gris oscuro. */
+  --color-texto-activo: #141414;
 
   --espacio-1: 4px;
   --espacio-2: 8px;
   --espacio-3: 16px;
+  --espacio-4: 24px;
 
-  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --radio: 10px;
+
+  font-family: "Poppins", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: var(--color-texto);
@@ -19,14 +38,33 @@
   color-scheme: light dark;
 }
 
+/* Modo oscuro: si el usuario lo eligió, o si no eligió nada y el sistema está en oscuro. */
+:root[data-tema="oscuro"] {
+  --color-fondo: #1b1b1b;
+  --color-fondo-alt: #222222;
+  --color-cabecera: #141414;
+  --color-texto: #f1f1f1;
+  --color-texto-suave: #a8a8a8;
+  --color-borde: #2a2a2a;
+  --color-texto-activo: #ffffff;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-fondo: #1e1e1e;
+  :root:not([data-tema="claro"]) {
+    --color-fondo: #1b1b1b;
+    --color-fondo-alt: #222222;
+    --color-cabecera: #141414;
     --color-texto: #f1f1f1;
     --color-texto-suave: #a8a8a8;
-    --color-borde: #3c3c3c;
-    --color-acento: #8ab4f8;
+    --color-borde: #2a2a2a;
+    --color-texto-activo: #ffffff;
+    color-scheme: dark;
   }
+}
+
+:root[data-tema="claro"] {
+  color-scheme: light;
 }
 
 *,
@@ -37,4 +75,5 @@
 
 body {
   margin: 0;
+  background: var(--color-fondo);
 }

@@ -11,6 +11,16 @@ function tabs() {
 }
 
 describe("App", () => {
+  it("muestra el logo de Cuatroochenta en la cabecera, antes del título", () => {
+    render(App);
+
+    const header = screen.getByRole("banner");
+    const logo = screen.getByRole("img", { name: "Cuatroochenta" });
+    expect(header.contains(logo)).toBe(true);
+    expect(logo.getAttribute("src")).toBe("/marca/480-color-fondo-claro.png");
+    expect(screen.getByRole("heading", { level: 1, name: "Anonimizador" })).toBeTruthy();
+  });
+
   it("muestra las dos pestañas dentro de la navegación de operaciones", () => {
     render(App);
 
