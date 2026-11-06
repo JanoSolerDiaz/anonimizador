@@ -572,3 +572,65 @@ fn inspecting_lists_each_file_with_its_type() {
     assert_eq!(files[2].kind, "No admitido");
     assert!(files[2].outputs.is_empty());
 }
+
+#[test]
+fn a_batch_of_twenty_with_one_corrupt_file_processes_the_other_nineteen() {
+    let world = World::new().ready();
+    let mut files = Vec::new();
+    for n in 0..20 {
+        let (name, text) = match n % 4 {
+            0 => (format!("nota-{n}.txt"), "Firma: Marta Lozano.\n".to_owned()),
+            1 => (
+                format!("acta-{n}.md"),
+                "# Acta\n\nAsiste Marta Lozano.\n".to_owned(),
+            ),
+            2 => (
+                format!("carta-{n}.txt"),
+                "Sin datos personales.\n".to_owned(),
+            ),
+            _ => (format!("informe-{n}.md"), "Vive en Zaragoza.\n".to_owned()),
+        };
+        files.push(job_file(
+            &n.to_string(),
+            &world.file(&name, &text),
+            Some("txt"),
+        ));
+    }
+    // Un «Word» que no lo es.
+    let corrupt = world.file("roto.docx", "esto no es un Word");
+    files[7] = job_file("7", &corrupt, Some("docx"));
+
+    world
+        .service
+        .anonymize(&AnonymizeJob {
+            files,
+            dir: world.out(),
+            skipped: vec![],
+            spreadsheet_amounts: false,
+            resolution: None,
+        })
+        .unwrap();
+    let events = world.events.take();
+    assert!(matches!(
+        phases(&events, "7").last().unwrap(),
+        Phase::Failed { message } if message.contains("Word")
+    ));
+    let done = (0..20)
+        .filter(|n| {
+            matches!(
+                phases(&events, &n.to_string()).last(),
+                Some(Phase::Anonymized { .. })
+            )
+        })
+        .count();
+    assert_eq!(done, 19);
+    assert_eq!(
+        events.last().unwrap(),
+        &Event::BatchDone {
+            done: 19,
+            failed: 1,
+            store_error: None
+        }
+    );
+    assert_eq!(world.reopen_store().store.documents().len(), 19);
+}

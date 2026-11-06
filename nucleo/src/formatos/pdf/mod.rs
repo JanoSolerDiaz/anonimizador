@@ -53,6 +53,15 @@ impl std::ops::Deref for PdfiumGuard {
     }
 }
 
+/// Recursos que indicó la app (los del paquete instalado).
+static RESOURCES: OnceLock<Resources> = OnceLock::new();
+
+/// Indica dónde están los recursos antes de usar PDFium por primera vez.
+/// Sin esto, se buscan con [`Resources::locate`].
+pub fn use_resources(resources: Resources) {
+    let _ = RESOURCES.set(resources);
+}
+
 /// PDFium, cargado la primera vez desde la carpeta de recursos. Espera a que
 /// lo suelte otro hilo; no se debe pedir dos veces en el mismo hilo.
 pub fn pdfium() -> Result<PdfiumGuard> {
@@ -62,7 +71,10 @@ pub fn pdfium() -> Result<PdfiumGuard> {
     let lock = LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let pdfium = PDFIUM
         .get_or_init(|| {
-            let resources = Resources::locate().map_err(|e| e.to_string())?;
+            let resources = match RESOURCES.get() {
+                Some(resources) => resources.clone(),
+                None => Resources::locate().map_err(|e| e.to_string())?,
+            };
             let bindings =
                 Pdfium::bind_to_library(resources.pdfium_path()).map_err(|e| e.to_string())?;
             Ok(Pdfium::new(bindings))

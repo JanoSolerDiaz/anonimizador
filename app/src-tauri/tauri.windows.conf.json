@@ -1,0 +1,21 @@
+{
+  "bundle": {
+    "targets": [
+      "msi"
+    ],
+    "resources": {
+      "../../recursos/onnxruntime/win-x64/": "recursos/onnxruntime/win-x64/",
+      "../../recursos/pdfium/win-x64/": "recursos/pdfium/win-x64/"
+    },
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "webviewInstallMode": {
+        "type": "offlineInstaller",
+        "silent": true
+      },
+      "wix": {
+        "language": "es-ES"
+      }
+    }
+  }
+}

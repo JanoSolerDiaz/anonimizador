@@ -38,18 +38,22 @@ impl Emitter for TauriEmitter {
     }
 }
 
-/// Carga el modelo: primero desde los recursos del paquete instalado, si no
-/// desde la carpeta `recursos/` del proyecto.
-fn load_engine(app: &tauri::AppHandle) -> Result<SharedDetector, String> {
+/// Los recursos del paquete instalado, o si no, los de la carpeta
+/// `recursos/` del proyecto (al desarrollar).
+fn resources(app: &tauri::AppHandle) -> Result<Resources, String> {
     let bundled = app
         .path()
         .resource_dir()
         .ok()
         .map(|dir| dir.join("recursos"));
-    let resources = match bundled.filter(|dir| dir.is_dir()) {
-        Some(dir) => Resources::new(dir),
-        None => Resources::locate().map_err(|e| e.to_string())?,
-    };
+    match bundled.filter(|dir| dir.is_dir()) {
+        Some(dir) => Ok(Resources::new(dir)),
+        None => Resources::locate().map_err(|e| e.to_string()),
+    }
+}
+
+fn load_engine(resources: Result<Resources, String>) -> Result<SharedDetector, String> {
+    let resources = resources?;
     let engine = Engine::load(
         &resources,
         &resources.model(DEFAULT_MODEL),
@@ -88,8 +92,13 @@ pub fn run() {
             app.manage(service.clone());
 
             // El modelo se carga en segundo plano: la ventana se usa mientras.
+            // PDFium y el motor leen los mismos recursos.
+            let resources = resources(&handle);
+            if let Ok(resources) = &resources {
+                nucleo::formatos::pdf::use_resources(resources.clone());
+            }
             let loading = service.clone();
-            std::thread::spawn(move || loading.set_model(load_engine(&handle)));
+            std::thread::spawn(move || loading.set_model(load_engine(resources)));
 
             // Purga de caducados una vez al día si la app sigue abierta.
             let purging = service;
