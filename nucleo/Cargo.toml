@@ -15,9 +15,8 @@ path = "src/bin/cli/main.rs"
 thiserror = "2.0.21"
 tracing = "0.1.44"
 
-# Sin `download-binaries`, `fetch-models` ni TLS: ort no puede descargar nada.
-# La biblioteca de ONNX Runtime se carga desde `recursos/` en tiempo de ejecución.
-ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "api-31"] }
+# `ort` se declara por objetivo más abajo: la feature api-NN debe coincidir con
+# la versión de ONNX Runtime que se carga, y en Mac Intel esa versión es otra.
 
 # Versión de API fijada a la de los binarios de PDFium descargados (chromium/7881).
 pdfium-render = { version = "=0.9.4", default-features = false, features = ["pdfium_7881", "image_latest", "thread_safe"] }
@@ -51,6 +50,21 @@ uuid = { version = "1.29.0", features = ["v4"] }
 # Con las funciones por defecto, para leer la zona horaria del sistema, y
 # `serde` para guardar las fechas en el almacén.
 jiff = { version = "0.2.38", features = ["serde"] }
+
+# ONNX Runtime. Sin `download-binaries`, `fetch-models` ni TLS: ort no puede
+# descargar nada; la biblioteca se carga desde `recursos/` en tiempo de
+# ejecución (`load-dynamic`). La feature api-NN fija la versión de la C API
+# contra la que enlaza ort y debe coincidir con la del binario cargado.
+#
+# Mac Intel: Microsoft no publica binarios de ONNX Runtime para Mac x86_64
+# desde la 1.23.2 (API 23); la 1.31 solo sale para arm64. Por eso en Mac Intel
+# se usa la 1.23.2 con api-23, y en el resto (Windows x64 y Mac Apple Silicon)
+# la 1.31.0 con api-31. Ver DECISIONES.md y scripts/recursos.lock.json.
+[target.'cfg(all(target_os = "macos", target_arch = "x86_64"))'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "api-23"] }
+
+[target.'cfg(not(all(target_os = "macos", target_arch = "x86_64")))'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "api-31"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

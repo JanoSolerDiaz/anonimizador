@@ -4,10 +4,6 @@
       "app",
       "dmg"
     ],
-    "resources": {
-      "../../recursos/onnxruntime/mac-arm64/": "recursos/onnxruntime/mac-arm64/",
-      "../../recursos/pdfium/mac-arm64/": "recursos/pdfium/mac-arm64/"
-    },
     "macOS": {
       "minimumSystemVersion": "12.0",
       "hardenedRuntime": true

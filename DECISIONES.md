@@ -36,10 +36,12 @@ TypeScript 7 ya está publicado, pero `svelte-check` 4.7.7 solo admite TypeScrip
 
 `tauri` 2.12 declara `reqwest` solo para Android e iOS (proxy del servidor de desarrollo móvil). `Cargo.lock` lista las dependencias de todas las plataformas, así que aparece ahí, pero `cargo tree --target` confirma que no entra en Windows ni en macOS. La garantía "sin red" se comprueba por plataforma en `scripts/test/dependencias.test.mjs`, no con el lock.
 
-### Pendiente para macOS (hito 6)
+### Pendiente para macOS (hito 6) — resuelto
 
-- ONNX Runtime 1.31.0 solo publica binarios de macOS para arm64. No hay paquete x86_64 ni universal2. Para el binario universal habrá que compilar ONNX Runtime para Intel, buscar otra fuente o reconsiderar el soporte de Mac Intel.
-- Las rutas internas de los paquetes de macOS en `recursos.lock.json` no se han comprobado todavía.
+Resuelto en el hito 6 (ver «Mac, compilado y probado en Intel y Apple Silicon»):
+
+- ONNX Runtime 1.31.0 solo publica binarios de macOS para arm64. En Mac Intel se usa la última versión x86_64 oficial, la 1.23.2, con la feature `api-23` de `ort` fijada solo para ese objetivo. No se compila ONNX Runtime desde fuente ni se hospeda nada.
+- Las rutas internas de los paquetes de macOS de `recursos.lock.json` (arm64 y x86_64) se comprobaron descargando y extrayendo los `.tgz`.
 
 ## Hito 2 · 2026-10-26
 
@@ -328,9 +330,13 @@ Se comprobó sin instalarlo: el MSI se extrajo con `msiexec /a` y el ejecutable 
 
 No hay certificado en el equipo de desarrollo, así que el MSI sale sin firmar. `scripts/empaquetar-windows.ps1` firma el ejecutable y el MSI si `ANONIMIZADOR_CERT_HUELLA` tiene la huella de un certificado de firma de código instalado, con sello de tiempo. En Mac, `scripts/empaquetar-mac.sh` firma y notariza con las variables `APPLE_*`.
 
-### Mac, preparado y sin probar
+### Mac, compilado y probado en Intel y Apple Silicon · 2026-11-09
 
-`tauri.macos.conf.json` (DMG, macOS 12, runtime endurecido, binarios de Apple Silicon) y `scripts/empaquetar-mac.sh` (app, DMG, PKG con `productbuild` y notarización) se escribieron en Windows, donde no se pueden compilar. Solo cubren Apple Silicon: ONNX Runtime 1.31 no publica binarios de Mac para Intel, así que no hay binario universal (ver «Pendiente para macOS», en el hito 1). Queda pendiente de Jano decidir si se admite Mac Intel.
+`tauri.macos.conf.json` y `scripts/empaquetar-mac.sh` se escribieron en Windows y en origen solo cubrían Apple Silicon. Se compilaron y probaron en un Mac Intel, dando soporte a las dos arquitecturas. Un Mac de cualquiera de las dos arquitecturas compila para ambas; el objetivo ajeno sale por compilación cruzada (en la prueba, arm64 desde Intel).
+
+- **ONNX Runtime en Mac Intel: la 1.23.2, no la 1.31.** Microsoft no publica binarios de Mac x86_64 desde la 1.23.2 (API 23); la 1.31 solo sale para arm64. En vez de compilar ONNX Runtime desde fuente y hospedarlo, se usa la 1.23.2 oficial en Intel y la 1.31.0 en Apple Silicon y Windows. `nucleo/Cargo.toml` declara `ort` por objetivo: `api-23` en `cfg(all(target_os = "macos", target_arch = "x86_64"))` y `api-31` en el resto. Se descartó compilar la 1.31 para Intel (misma versión en todas partes) porque obligaba a compilar desde fuente y a hospedar el artefacto, mientras que el uso de `ort` es inferencia estándar y corre igual en la 1.23.2. Comprobado: el CLI, enlazado con `api-23` y cargando la 1.23.2, carga el modelo y detecta las entidades de un texto de prueba.
+- **Recursos por arquitectura en la compilación, no en la config.** `tauri.macos.conf.json` no puede distinguir aarch64 de x86_64 (Tauri fusiona esa config por sistema operativo, no por arquitectura). Por eso ya no fija las carpetas de ONNX Runtime y PDFium; `scripts/empaquetar-mac.sh` inyecta la del objetivo con `--config` en cada compilación, como el script de Windows hace con la firma. Así cada `.app` lleva solo los binarios de su arquitectura (comprobado: el `.app` de Intel lleva `mac-x64` y el de Apple Silicon `mac-arm64`, sin mezclarse).
+- **Artefactos.** Por arquitectura: `.app`, DMG y PKG (`productbuild`, instala en `/Applications` sin preguntas para Jamf o Intune). Sin las variables `APPLE_*` salen sin firmar y sin notarizar; al distribuirlos, Gatekeeper los bloquea y hay que permitirlos en Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente».
 
 ### Caducidad fijada por sistemas
 

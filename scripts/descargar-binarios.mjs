@@ -5,7 +5,10 @@
 // Junto a los archivos extraídos se guarda `.origen.json` con el hash del
 // paquete y de cada archivo. Si todo coincide, no se vuelve a descargar.
 //
-// Uso: node scripts/descargar-binarios.mjs [--todas]
+// Uso: node scripts/descargar-binarios.mjs [--todas | <plataforma>...]
+//   Sin argumentos: solo la plataforma actual.
+//   --todas: todas las plataformas del lock.
+//   Una o más plataformas (p. ej. mac-arm64 mac-x64): solo esas.
 
 import {
   RAIZ,
@@ -22,14 +25,19 @@ import {
 
 const { binarios } = await leerLock();
 const todas = process.argv.includes("--todas");
+const explicitas = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const actual = plataformaActual();
 
 let faltan = 0;
 for (const binario of binarios) {
-  const plataformas = todas ? Object.keys(binario.plataformas) : [actual];
+  const plataformas = todas
+    ? Object.keys(binario.plataformas)
+    : explicitas.length
+      ? explicitas
+      : [actual];
   for (const plataforma of plataformas) {
     const paquete = binario.plataformas[plataforma];
-    const etiqueta = `${binario.nombre} ${binario.version} (${plataforma})`;
+    const etiqueta = `${binario.nombre} ${paquete?.version ?? binario.version} (${plataforma})`;
     if (!paquete) {
       console.warn(`! ${etiqueta}: no hay paquete para esta plataforma`);
       faltan++;
