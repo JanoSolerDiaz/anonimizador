@@ -56,7 +56,7 @@ for (const binario of binarios) {
     let carpeta;
     try {
       await descargar(paquete.url, archivo, paquete.sha256);
-      carpeta = await extraer(archivo);
+      carpeta = await extraer(archivo, Object.keys(paquete.archivos));
       const archivos = await copiarArchivos(carpeta, paquete.archivos, destino);
       await writeFile(
         join(destino, ".origen.json"),

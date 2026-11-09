@@ -98,12 +98,38 @@ export async function descargar(url, destino, sha256) {
   }
 }
 
-/** Extrae un .zip o .tgz con el `tar` del sistema (bsdtar en Windows 10+ y macOS). */
-export async function extraer(archivo) {
+/**
+ * Extrae un .zip o .tgz con el `tar` del sistema (bsdtar en Windows 10+ y macOS).
+ *
+ * Con `miembros` (rutas dentro del paquete, como las claves de `archivos` del
+ * lock) extrae solo esos. Así no se tocan los enlaces simbólicos de los .tgz de
+ * macOS (p. ej. `libonnxruntime.1.dylib`), que el tar de Windows no puede crear
+ * sin permisos de administrador. Los que no estén en el paquete se ignoran:
+ * `copiarArchivos` avisa después de cuál falta.
+ */
+export async function extraer(archivo, miembros) {
   const carpeta = await mkdtemp(join(dirname(archivo), "extraer-"));
   // En Windows se fuerza el tar del sistema: el de Git Bash no lee .zip.
   const tar = process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
-  execFileSync(tar, ["-xf", archivo, "-C", carpeta], { stdio: "inherit" });
+
+  let nombres = [];
+  if (miembros) {
+    // Algunos paquetes guardan las rutas con «./» delante; se busca el nombre
+    // exacto que usa el paquete para que tar lo encuentre.
+    const contenido = execFileSync(tar, ["-tf", archivo], { encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
+    nombres = miembros
+      .map((miembro) => contenido.find((nombre) => nombre.replace(/^\.\//, "") === miembro))
+      .filter(Boolean);
+    if (!nombres.length) return carpeta;
+  }
+
+  try {
+    execFileSync(tar, ["-xf", archivo, "-C", carpeta, ...nombres], { stdio: "inherit" });
+  } catch (error) {
+    // Quien llama no recibe la carpeta si falla, así que se borra aquí.
+    await rm(carpeta, { recursive: true, force: true });
+    throw error;
+  }
   return carpeta;
 }
 

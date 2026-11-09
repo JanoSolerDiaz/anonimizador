@@ -7,7 +7,7 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, writeFile, readFile, rm, appendFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, appendFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -151,6 +151,43 @@ describe("extraer y copiarArchivos", () => {
       await rm(carpeta, { recursive: true, force: true });
     });
   }
+
+  // Los .tgz de macOS traen enlaces simbólicos (libonnxruntime.1.dylib) que el
+  // tar de Windows no puede crear. Extrayendo solo lo que pide el lock, no se tocan.
+  for (const prefijo of ["", "./"]) {
+    test(`con miembros, extrae solo esos archivos (rutas ${prefijo ? "con" : "sin"} «./»)`, async () => {
+      const paquete = join(dir, `solo-miembros-${prefijo ? "punto" : "limpio"}.tgz`);
+      execFileSync(tar, ["-c", "-z", "-f", paquete, "-C", join(dir, "origen"), `${prefijo}lib`, `${prefijo}LICENSE`]);
+
+      const carpeta = await extraer(paquete, ["lib/biblioteca.dll"]);
+
+      assert.equal(await readFile(join(carpeta, "lib", "biblioteca.dll"), "utf8"), "binario");
+      assert.equal(existsSync(join(carpeta, "LICENSE")), false);
+      await rm(carpeta, { recursive: true, force: true });
+    });
+  }
+
+  test("con miembros que no están en el paquete, no extrae nada", async () => {
+    const paquete = join(dir, "sin-miembros.tgz");
+    execFileSync(tar, ["-c", "-z", "-f", paquete, "-C", join(dir, "origen"), "lib", "LICENSE"]);
+
+    const carpeta = await extraer(paquete, ["bin/no-esta.dll"]);
+
+    assert.equal(existsSync(join(carpeta, "lib")), false);
+    assert.equal(existsSync(join(carpeta, "LICENSE")), false);
+    await rm(carpeta, { recursive: true, force: true });
+  });
+
+  test("si tar falla, no deja la carpeta temporal", async () => {
+    const carpetaPaquete = join(dir, "roto");
+    await mkdir(carpetaPaquete);
+    const paquete = join(carpetaPaquete, "roto.tgz");
+    await writeFile(paquete, "esto no es un tgz");
+
+    await assert.rejects(extraer(paquete));
+
+    assert.deepEqual(await readdir(carpetaPaquete), ["roto.tgz"]);
+  });
 
   test("copiarArchivos renombra y devuelve el hash de cada archivo", async () => {
     const destino = join(dir, "destino");
