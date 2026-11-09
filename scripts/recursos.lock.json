@@ -60,8 +60,8 @@
             "onnxruntime-osx-arm64-1.31.0/ThirdPartyNotices.txt": "ThirdPartyNotices.txt"
           }
         },
-        "_comentario_mac-x64": "Microsoft no publica binarios de Mac Intel de ONNX Runtime desde la 1.23.2 (API 23); la 1.31 solo sale para arm64. En Mac Intel se usa la 1.23.2, y nucleo/Cargo.toml fija la feature api-23 de ort solo para ese objetivo. Ver DECISIONES.md.",
         "mac-x64": {
+          "_comentario": "Microsoft no publica binarios de Mac Intel de ONNX Runtime desde la 1.23.2 (API 23); la 1.31 solo sale para arm64. En Mac Intel se usa la 1.23.2, y nucleo/Cargo.toml fija la feature api-23 de ort solo para ese objetivo. Ver DECISIONES.md.",
           "version": "1.23.2",
           "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-x86_64-1.23.2.tgz",
           "sha256": "d10359e16347b57d9959f7e80a225a5b4a66ed7d7e007274a15cae86836485a6",

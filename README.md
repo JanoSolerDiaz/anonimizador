@@ -46,9 +46,12 @@ powershell -ExecutionPolicy Bypass -File scripts\empaquetar-windows.ps1
 ```
 
 ```bash
-# Mac (Apple Silicon), en un Mac: app, DMG y PKG, firmados y notarizados con las variables APPLE_*.
-# Sin probar todavía: ver DECISIONES.md.
+# Mac, en un Mac (Intel o Apple Silicon): app, DMG y PKG para cada arquitectura,
+# firmados y notarizados con las variables APPLE_*. Mac Intel lleva ONNX Runtime 1.23.2:
+# ver DECISIONES.md.
 scripts/empaquetar-mac.sh
+# → target/<aarch64|x86_64>-apple-darwin/release/bundle/dmg/*.dmg
+# → target/<aarch64|x86_64>-apple-darwin/release/bundle/Anonimizador_<versión>_<aarch64|x86_64>.pkg
 ```
 
 Sistemas puede fijar el plazo de caducidad del almacén: en Windows, el DWORD `DiasCaducidad` de `HKLM\SOFTWARE\Policies\Cuatroochenta\Anonimizador`; en Mac, la clave `DiasCaducidad` de un perfil con el dominio `com.cuatroochenta.anonimizador`. Las pruebas manuales para sistemas están en [`tests/pruebas-manuales.md`](tests/pruebas-manuales.md).
